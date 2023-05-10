@@ -29,8 +29,8 @@
 
 /* Constants */
 #define HBDBUS_PROTOCOL_NAME             "HBDBUS"
-#define HBDBUS_PROTOCOL_VERSION          100
-#define HBDBUS_MINIMAL_PROTOCOL_VERSION  100
+#define HBDBUS_PROTOCOL_VERSION          200
+#define HBDBUS_MINIMAL_PROTOCOL_VERSION  200
 
 #define HBDBUS_US_PATH                   "/var/tmp/hbdbus.sock"
 #define HBDBUS_WS_PORT                   "7700"
