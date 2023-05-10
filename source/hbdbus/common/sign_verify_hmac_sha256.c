@@ -28,11 +28,7 @@
 #include <assert.h>
 
 #ifdef BUILD_APP_AUTH
-#ifndef HAVE_LIBSSL
-
-#include <hibox/ulog.h>
-#include <hibox/sha256.h>
-#include <hibox/hmac.h>
+#if !HAVE(OPENSSL)
 
 #include "hbdbus.h"
 
@@ -107,5 +103,5 @@ int hbdbus_verify_signature (const char* app_name,
     return 0;
 }
 
-#endif /* !HAVE_LIBSSL */
+#endif /* !HAVE(OPENSSL) */
 #endif /* BUILD_APP_AUTH */

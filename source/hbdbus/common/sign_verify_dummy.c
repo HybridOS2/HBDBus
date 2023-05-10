@@ -29,10 +29,6 @@
 
 #ifndef BUILD_APP_AUTH
 
-#include <hibox/ulog.h>
-#include <hibox/sha256.h>
-#include <hibox/hmac.h>
-
 #include "hbdbus.h"
 
 #define DUMMY_SIGNATURE     "DUMB"

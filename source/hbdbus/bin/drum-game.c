@@ -32,8 +32,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <hibox/ulog.h>
-#include <hibox/json.h>
+#include "internal/log.h"
 
 #include "hbdbus.h"
 #include "cmdline.h"
@@ -51,6 +50,9 @@ static const char* on_method_get_ball (hbdbus_conn* conn,
         const char* from_endpoint, const char* to_method,
         const char* method_param, int *err_code)
 {
+    (void)to_method;
+    (void)method_param;
+
     char runner_name [HBDBUS_LEN_RUNNER_NAME + 1];
     *err_code = 0;
 
@@ -154,6 +156,10 @@ static void on_game_over (hbdbus_conn* conn,
         const char* from_endpoint, const char* from_bubble,
         const char* bubble_data)
 {
+    (void)from_endpoint;
+    (void)from_bubble;
+    (void)bubble_data;
+
     struct player_info *info = hbdbus_conn_get_user_data (conn);
 
     info->running = false;
@@ -299,19 +305,19 @@ static void term_drum_game (hbdbus_conn* conn)
         free (info->ball_content);
 
     if ((err_code = hbdbus_revoke_procedure (conn, "getBall"))) {
-        ULOG_ERR ("Failed to revoke procedure `getBall` (%d): %s\n",
+        LOG_ERR ("Failed to revoke procedure `getBall` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
         return;
     }
 
     if ((err_code = hbdbus_revoke_procedure (conn, "notifyReady"))) {
-        ULOG_ERR ("Failed to revoke procedure `notifyReady` (%d): %s\n",
+        LOG_ERR ("Failed to revoke procedure `notifyReady` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
         return;
     }
 
     if ((err_code = hbdbus_revoke_event (conn, "GameOver"))) {
-        ULOG_ERR ("Failed to revoke event `GameOver` (%d): %s\n",
+        LOG_ERR ("Failed to revoke event `GameOver` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
         return;
     }
@@ -321,6 +327,9 @@ static char* on_method_notify_ready (hbdbus_conn* conn,
         const char* from_endpoint, const char* to_method,
         const char* method_param, int *err_code)
 {
+    (void)to_method;
+    (void)method_param;
+
     int my_err_code;
     char runner_name [HBDBUS_LEN_RUNNER_NAME + 1];
     struct run_info *info = hbdbus_conn_get_user_data (conn);
@@ -333,7 +342,7 @@ static char* on_method_notify_ready (hbdbus_conn* conn,
     if (strncasecmp (runner_name, PREFIX_PLAYER_RUNNER, LEN_PREFIX) == 0) {
         int pn = atoi (runner_name + LEN_PREFIX);
 
-        ULOG_INFO ("Player %d (total %d) is ready now\n", pn, info->nr_players);
+        LOG_INFO ("Player %d (total %d) is ready now\n", pn, info->nr_players);
 
         if (pn < info->nr_players - 1) {
             fork_a_player (conn, pn + 1);
@@ -343,7 +352,7 @@ static char* on_method_notify_ready (hbdbus_conn* conn,
             char *ret_value;
 
             /* all players are ready now */
-            ULOG_INFO ("Getting ball from %s...\n", from_endpoint);
+            LOG_INFO ("Getting ball from %s...\n", from_endpoint);
             my_err_code = hbdbus_call_procedure_and_wait (conn,
                     from_endpoint, "getBall",
                     HBDBUS_RUNNER_CMDLINE,
@@ -353,12 +362,12 @@ static char* on_method_notify_ready (hbdbus_conn* conn,
                 fprintf (stderr, "The ball content:\n%s\n", ret_value);
             }
             else {
-                ULOG_ERR ("Failed to call getBall\n");
+                LOG_ERR ("Failed to call getBall\n");
             }
 
             my_err_code = hbdbus_fire_event (conn, "GameOver", "Ok");
             if (my_err_code) {
-                ULOG_ERR ("Failed to fire event `GameOver`\n");
+                LOG_ERR ("Failed to fire event `GameOver`\n");
             }
 
             term_drum_game (conn);
@@ -379,21 +388,21 @@ int start_drum_game (hbdbus_conn* conn, int nr_players, const char* ball_content
 
     if ((err_code = hbdbus_register_event (conn, "GameOver",
                     HBDBUS_LOCALHOST, info->app_name))) {
-        ULOG_ERR ("Failed to register event `GameOver` (%d): %s\n",
+        LOG_ERR ("Failed to register event `GameOver` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
         return -1;
     }
 
     if ((err_code = hbdbus_register_procedure (conn, "notifyReady",
             HBDBUS_LOCALHOST, info->app_name, on_method_notify_ready))) {
-        ULOG_ERR ("Failed to register procedure `notifyReady` (%d): %s\n",
+        LOG_ERR ("Failed to register procedure `notifyReady` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
         return -1;
     }
 
     if ((err_code = hbdbus_register_procedure_const (conn, "getBall",
             HBDBUS_LOCALHOST, info->app_name, on_method_get_ball))) {
-        ULOG_ERR ("Failed to register procedure `getBall` (%d): %s\n",
+        LOG_ERR ("Failed to register procedure `getBall` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
         return -1;
     }

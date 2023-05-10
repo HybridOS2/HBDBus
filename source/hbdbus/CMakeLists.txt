@@ -137,14 +137,18 @@ HBDBUS_EXECUTABLE(hbdbuscl)
 list(APPEND hbdbuscl_SOURCES
     "${HBDBUS_DIR}/common/libhbdbus.c"
     "${HBDBUS_DIR}/common/helpers.c"
+    "${HBDBUS_DIR}/common/avl.c"
+    "${HBDBUS_DIR}/common/avl-cmp.c"
+    "${HBDBUS_DIR}/common/kvlist.c"
     "${HBDBUS_DIR}/common/sign_verify_rsa_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_hmac_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_dummy.c"
     "${HBDBUS_DIR}/bin/cmdline.c"
-    "${HBDBUS_DIR}/bin/drum_game.c"
+    "${HBDBUS_DIR}/bin/drum-game.c"
 )
 
 set(hbdbuscl_LIBRARIES
+    PurC::PurC
 )
 
 set_target_properties(hbdbuscl PROPERTIES

@@ -24,7 +24,6 @@
 #define _HBDBUS_CMDLIEN_H
 
 #include <termio.h>
-#include <hibox/kvlist.h>
 
 #define NR_CMD_ARGS         4
 

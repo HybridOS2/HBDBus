@@ -28,7 +28,7 @@
 #include <hibox/ulog.h>
 
 #ifdef BUILD_APP_AUTH
-#ifdef HAVE_LIBSSL
+#if HAVE(OPENSSL)
 
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
@@ -159,5 +159,5 @@ int hbdbus_verify_signature (const char* app_name,
     return retv ? 1 : 0;
 }
 
-#endif /* HAVE_LIBSSL */
+#endif /* HAVE_OPENSSL */
 #endif /* BUILD_APP_AUTH */

@@ -37,8 +37,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include <hibox/ulog.h>
-#include <hibox/json.h>
+#include "internal/log.h"
 
 #include "hbdbus.h"
 #include "cmdline.h"
@@ -162,12 +161,12 @@ static int setup_tty (void)
 
     ttyfd = open ("/dev/tty", O_RDONLY);
     if (ttyfd < 0) {
-        ULOG_ERR ("Failed to open /dev/tty: %s.", strerror (errno));
+        LOG_ERR ("Failed to open /dev/tty: %s.", strerror (errno));
         return -1;
     }
 
     if (tcgetattr (ttyfd, &the_client.startup_termios) < 0) {
-        ULOG_ERR ("Failed to call tcgetattr: %s.", strerror (errno));
+        LOG_ERR ("Failed to call tcgetattr: %s.", strerror (errno));
         goto error;
     }
 
@@ -188,12 +187,12 @@ static int setup_tty (void)
 #endif
 
     if (tcsetattr (ttyfd, TCSAFLUSH, &my_termios) < 0) {
-        ULOG_ERR ("Failed to call tcsetattr: %s.", strerror (errno));
+        LOG_ERR ("Failed to call tcsetattr: %s.", strerror (errno));
         goto error;
     }
 
     if (fcntl (ttyfd, F_SETFL, fcntl (ttyfd, F_GETFL, 0) | O_NONBLOCK) == -1) {
-        ULOG_ERR ("Failed to set TTY as non-blocking: %s.", strerror (errno));
+        LOG_ERR ("Failed to set TTY as non-blocking: %s.", strerror (errno));
         return -1;
     }
 
@@ -260,17 +259,17 @@ static int setup_signals (void)
     sa.sa_handler = handle_signal_action;
 
     if (sigaction (SIGINT, &sa, 0) != 0) {
-        ULOG_ERR ("Failed to call sigaction for SIGINT: %s\n", strerror (errno));
+        LOG_ERR ("Failed to call sigaction for SIGINT: %s\n", strerror (errno));
         return -1;
     }
 
     if (sigaction (SIGPIPE, &sa, 0) != 0) {
-        ULOG_ERR ("Failed to call sigaction for SIGPIPE: %s\n", strerror (errno));
+        LOG_ERR ("Failed to call sigaction for SIGPIPE: %s\n", strerror (errno));
         return -1;
     }
 
     if (sigaction (SIGCHLD, &sa, 0) != 0) {
-        ULOG_ERR ("Failed to call sigaction for SIGCHLD: %s\n", strerror (errno));
+        LOG_ERR ("Failed to call sigaction for SIGCHLD: %s\n", strerror (errno));
         return -1;
     }
 
@@ -343,6 +342,8 @@ static void console_print_prompt (hbdbus_conn *conn, bool reset_history)
 
 static void on_cmd_help (hbdbus_conn *conn)
 {
+    (void)conn;
+
     fprintf (stderr, "Commands:\n\n");
     fprintf (stderr, "  <help | h>\n");
     fprintf (stderr, "    print this help message.\n");
@@ -443,6 +444,11 @@ static const char* my_method_handler (hbdbus_conn* conn,
         const char* from_endpoint, const char* to_method,
         const char* method_param, int *err_code)
 {
+    (void)conn;
+    (void)from_endpoint;
+    (void)method_param;
+    (void)err_code;
+
     char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
     struct run_info *info = hbdbus_conn_get_user_data (conn);
     void* data;
@@ -598,6 +604,7 @@ static void cb_generic_event (hbdbus_conn* conn,
         const char* from_endpoint, const char* from_bubble,
         const char* bubble_data)
 {
+    (void)conn;
     fprintf (stderr, "\nGot an event from (%s/%s):\n%s\n",
             from_endpoint, from_bubble, bubble_data);
 }
@@ -640,39 +647,47 @@ static void on_cmd_unsubscribe (hbdbus_conn *conn,
     }
 }
 
+static void serialize_variant_to_fp(FILE *fp, purc_variant_t v)
+{
+    (void)fp;
+    (void)v;
+}
+
 static int on_result_list_procedures (hbdbus_conn* conn,
         const char* from_endpoint, const char* from_method,
         const char* call_id, int ret_code, const char* ret_value)
 {
+    (void)from_endpoint;
+    (void)from_method;
+    (void)call_id;
     if (ret_code == PCRDR_SC_OK) {
         struct run_info *info = hbdbus_conn_get_user_data (conn);
         bool first_time = true;
 
         if (info->jo_endpoints) {
             first_time = false;
-            json_object_put (info->jo_endpoints);
+            purc_variant_unref (info->jo_endpoints);
         }
         else {
         }
 
-        info->jo_endpoints = hbdbus_json_object_from_string (ret_value,
-                strlen (ret_value), 5);
+        info->jo_endpoints = purc_variant_make_from_json_string (ret_value,
+                strlen (ret_value));
         if (info->jo_endpoints == NULL) {
-            ULOG_ERR ("Failed to build JSON object for endpoints:\n%s\n", ret_value);
+            LOG_ERR ("Failed to build JSON object for endpoints:\n%s\n", ret_value);
         }
         else if (first_time) {
-            json_object_to_fd (2, info->jo_endpoints,
-                    JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+            serialize_variant_to_fp(stderr, info->jo_endpoints);
             fputs ("\n", stderr);
         }
 
         return 0;
     }
     else if (ret_code == PCRDR_SC_ACCEPTED) {
-        ULOG_WARN ("The server accepted the call\n");
+        LOG_WARN ("The server accepted the call\n");
     }
     else {
-        ULOG_WARN ("Unexpected return code: %d\n", ret_code);
+        LOG_WARN ("Unexpected return code: %d\n", ret_code);
     }
 
     return -1;
@@ -684,8 +699,7 @@ static void on_cmd_list_endpoints (hbdbus_conn* conn)
 
     if (info->jo_endpoints) {
         fputs ("ENDPOINTS:\n", stderr);
-        json_object_to_fd (2, info->jo_endpoints,
-                JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+        serialize_variant_to_fp(stderr, info->jo_endpoints);
         fputs ("\n", stderr);
     }
     else {
@@ -740,14 +754,13 @@ static void on_cmd_list_procedures (hbdbus_conn *conn,
 
         fprintf (stderr, "Procedures can be called by %s:\n", endpoint);
 
-        jo = hbdbus_json_object_from_string (ret_value,
-                strlen (ret_value), 5);
+        jo = purc_variant_make_from_json_string (ret_value,
+                strlen (ret_value));
         if (jo == NULL) {
             fprintf (stderr, "Bad result:\n%s\n", ret_value);
         }
         else {
-            json_object_to_fd (2, jo,
-                    JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+            serialize_variant_to_fp(stderr, jo);
             fputs ("\n", stderr);
         }
 
@@ -779,14 +792,13 @@ static void on_cmd_list_events (hbdbus_conn *conn,
 
         fprintf (stderr, "Events can be subscribed by %s:\n", endpoint);
 
-        jo = hbdbus_json_object_from_string (ret_value,
-                strlen (ret_value), 5);
+        jo = purc_variant_make_from_json_string (ret_value,
+                strlen (ret_value));
         if (jo == NULL) {
             fprintf (stderr, "Bad result:\n%s\n", ret_value);
         }
         else {
-            json_object_to_fd (2, jo,
-                    JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+            serialize_variant_to_fp(stderr, jo);
             fputs ("\n", stderr);
         }
 
@@ -832,14 +844,13 @@ static void on_cmd_list_subscribers (hbdbus_conn *conn,
 
         fprintf (stderr, "Subscribers of %s/%s:\n", endpoint, bubble);
 
-        jo = hbdbus_json_object_from_string (ret_value,
-                strlen (ret_value), 5);
+        jo = purc_variant_make_from_json_string (ret_value,
+                strlen (ret_value));
         if (jo == NULL) {
             fprintf (stderr, "Bad result:\n%s\n", ret_value);
         }
         else {
-            json_object_to_fd (2, jo,
-                    JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+            serialize_variant_to_fp(stderr, jo);
             fputs ("\n", stderr);
         }
 
@@ -1344,6 +1355,10 @@ static const char* my_echo_method (hbdbus_conn* conn,
         const char* from_endpoint, const char* to_method,
         const char* method_param, int *err_code)
 {
+    (void)conn;
+    (void)from_endpoint;
+    (void)to_method;
+    (void)method_param;
     *err_code = 0;
     return method_param;
 
@@ -1359,15 +1374,20 @@ static int my_echo_result (hbdbus_conn* conn,
         const char* call_id,
         int ret_code, const char* ret_value)
 {
+    (void)conn;
+    (void)from_endpoint;
+    (void)from_method;
+    (void)call_id;
+
     if (ret_code == PCRDR_SC_OK) {
-        ULOG_INFO ("Got the result: %s\n", ret_value);
+        LOG_INFO ("Got the result: %s\n", ret_value);
         return 0;
     }
     else if (ret_code == PCRDR_SC_ACCEPTED) {
-        ULOG_WARN ("The server accepted the call\n");
+        LOG_WARN ("The server accepted the call\n");
     }
     else {
-        ULOG_WARN ("Unexpected return code: %d\n", ret_code);
+        LOG_WARN ("Unexpected return code: %d\n", ret_code);
     }
 
     return -1;
@@ -1392,11 +1412,11 @@ static int test_basic_functions (hbdbus_conn *conn)
 
     hbdbus_json_packet_to_object (a_json, strlen (a_json), &jo);
     if (jo == NULL) {
-        ULOG_ERR ("Bad JSON: \n%s\n", a_json);
+        LOG_ERR ("Bad JSON: \n%s\n", a_json);
     }
     else {
-        ULOG_INFO ("hbdbus_json_packet_to_object passed\n");
-        json_object_put (jo);
+        LOG_INFO ("hbdbus_json_packet_to_object passed\n");
+        purc_variant_unref (jo);
     }
 
     /* call echo method of the builtin endpoint */
@@ -1408,28 +1428,28 @@ static int test_basic_functions (hbdbus_conn *conn)
             &ret_code, &ret_value);
 
     if (err_code) {
-        ULOG_ERR ("Failed to call hbdbus_call_procedure_and_wait: %s\n",
+        LOG_ERR ("Failed to call hbdbus_call_procedure_and_wait: %s\n",
                 hbdbus_get_err_message (err_code));
     }
     else {
-        ULOG_INFO ("Got the result for `echo` method: %s (%d)\n",
+        LOG_INFO ("Got the result for `echo` method: %s (%d)\n",
                 ret_value ? ret_value : "(null)", ret_code);
     }
 
     err_code = hbdbus_register_event (conn, "alarm", "*", "*");
-    ULOG_INFO ("error message for hbdbus_register_event: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_register_event: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_fire_event (conn, "alarm", "12:00");
-    ULOG_INFO ("error message for hbdbus_fire_event: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_fire_event: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_revoke_event (conn, "alarm");
-    ULOG_INFO ("error message for hbdbus_revoke_event: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_revoke_event: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_register_procedure_const (conn, "echo", NULL, NULL, my_echo_method);
-    ULOG_INFO ("error message for hbdbus_register_procedure: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_register_procedure: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     /* call echo method of myself */
@@ -1441,21 +1461,21 @@ static int test_basic_functions (hbdbus_conn *conn)
             &ret_code, &ret_value);
 
     if (err_code) {
-        ULOG_ERR ("Failed to call hbdbus_call_procedure_and_wait: %s\n",
+        LOG_ERR ("Failed to call hbdbus_call_procedure_and_wait: %s\n",
                 hbdbus_get_err_message (err_code));
     }
     else {
-        ULOG_INFO ("Got the result for `echo` method: %s (%d)\n",
+        LOG_INFO ("Got the result for `echo` method: %s (%d)\n",
                 ret_value ? ret_value : "(null)", ret_code);
     }
 
     err_code = hbdbus_revoke_procedure (conn, "echo");
-    ULOG_INFO ("error message for hbdbus_revoke_procedure: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_revoke_procedure: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     if (err_code == HBDBUS_EC_SERVER_ERROR) {
         int ret_code = hbdbus_conn_get_last_ret_code (conn);
-        ULOG_INFO ("last return code: %d (%s)\n",
+        LOG_INFO ("last return code: %d (%s)\n",
                 ret_code, pcrdr_get_ret_message (ret_code));
     }
 
@@ -1466,31 +1486,32 @@ static void on_new_broken_endpoint (hbdbus_conn* conn,
         const char* from_endpoint, const char* from_bubble,
         const char* bubble_data)
 {
-    purc_variant_t jo = hbdbus_json_object_from_string (bubble_data,
-            strlen (bubble_data), 2);
+    (void)conn;
+    (void)from_endpoint;
+
+    purc_variant_t jo = purc_variant_make_from_json_string (bubble_data,
+            strlen (bubble_data));
     if (jo == NULL) {
-        ULOG_ERR ("Failed to parse bubbleData:\n%s\n", bubble_data);
+        LOG_ERR ("Failed to parse bubbleData:\n%s\n", bubble_data);
         return;
     }
 
     if (strcasecmp (from_bubble, "NEWENDPOINT") == 0) {
         fputs ("NEW ENDPOINT:\n", stderr);
-        json_object_to_fd (2, jo,
-                    JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+        serialize_variant_to_fp(stderr, jo);
     }
     else if (strcasecmp (from_bubble, "BROKENENDPOINT") == 0) {
         fputs ("LOST ENDPOINT:\n", stderr);
-        json_object_to_fd (2, jo,
-                    JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+        serialize_variant_to_fp(stderr, jo);
     }
 
-    json_object_put (jo);
+    purc_variant_unref (jo);
 }
 
 /* Command line help. */
 static void print_usage (void)
 {
-    printf ("HBDBusCL (%s) - the command line of data bus system for HybridOS\n\n", HBDBUS_VERSION);
+    printf ("HBDBusCL (%s) - the command line of data bus system for HybridOS\n\n", HBDBUS_VERSION_STRING);
 
     printf (
             "Usage: "
@@ -1527,7 +1548,7 @@ static int read_option_args (int argc, char **argv)
                 print_usage ();
                 return -1;
             case 'v':
-                fprintf (stdout, "HBDBusCL: %s\n", HBDBUS_VERSION);
+                fprintf (stdout, "HBDBusCL: %s\n", HBDBUS_VERSION_STRING);
                 return -1;
             case 'a':
                 if (strlen (optarg) < HBDBUS_LEN_APP_NAME)
@@ -1577,7 +1598,7 @@ int main (int argc, char **argv)
         strcpy (the_client.runner_name, HBDBUS_RUNNER_CMDLINE);
     }
 
-    ulog_open (-1, -1, "HBDBusCL");
+    // TODO: ulog_open (-1, -1, "HBDBusCL");
 
     kvlist_init (&the_client.ret_value_list, NULL);
     the_client.running = true;
@@ -1618,7 +1639,7 @@ int main (int argc, char **argv)
 
     int err_code;
     err_code = hbdbus_register_procedure_const (conn, "echo", NULL, NULL, my_echo_method);
-    ULOG_INFO ("error message for hbdbus_register_procedure: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_register_procedure: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_call_procedure (conn,
@@ -1627,20 +1648,20 @@ int main (int argc, char **argv)
             "I AM HERE AGAIN",
             HBDBUS_DEF_TIME_EXPECTED,
             my_echo_result, NULL);
-    ULOG_INFO ("error message for hbdbus_call_procedure: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_call_procedure: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_register_event (conn, "clock", NULL, NULL);
-    ULOG_INFO ("error message for hbdbus_register_event: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_register_event: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_subscribe_event (conn, the_client.self_endpoint, "clock",
             cb_generic_event);
-    ULOG_INFO ("error message for hbdbus_subscribe_event: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_subscribe_event: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_fire_event (conn, "clock", curr_time);
-    ULOG_INFO ("error message for hbdbus_fire_event: %s (%d)\n",
+    LOG_INFO ("error message for hbdbus_fire_event: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     if ((err_code = hbdbus_subscribe_event (conn,
@@ -1721,7 +1742,7 @@ int main (int argc, char **argv)
     }
 
     // cleanup
-    json_object_put (the_client.jo_endpoints);
+    purc_variant_unref (the_client.jo_endpoints);
 
     {
         const char* name;
@@ -1747,7 +1768,7 @@ failed:
     if (cnnfd >= 0)
         hbdbus_disconnect (conn);
 
-    ulog_close ();
+    // TODO: ulog_close ();
     return 0;
 }
 
