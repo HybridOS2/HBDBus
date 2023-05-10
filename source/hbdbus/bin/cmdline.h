@@ -25,6 +25,8 @@
 
 #include <termio.h>
 
+#include "internal/kvlist.h"
+
 #define NR_CMD_ARGS         4
 
 #define LEN_COMMAND         31
