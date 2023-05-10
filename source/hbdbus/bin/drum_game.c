@@ -54,7 +54,7 @@ static const char* on_method_get_ball (hbdbus_conn* conn,
     char runner_name [HBDBUS_LEN_RUNNER_NAME + 1];
     *err_code = 0;
 
-    if (hbdbus_extract_runner_name (from_endpoint, runner_name) <= 0) {
+    if (purc_extract_runner_name (from_endpoint, runner_name) <= 0) {
         *err_code = HBDBUS_EC_UNEXPECTED;
         return NULL;
     }
@@ -96,7 +96,7 @@ static int get_ball_from_previous_player (hbdbus_conn* conn, int pn, const char 
     char* ret_value;
 
     if (pn == 0) {
-        hbdbus_assemble_endpoint_name (
+        purc_assemble_endpoint_name (
                 hbdbus_conn_own_host_name (conn),
                 hbdbus_conn_app_name (conn), HBDBUS_RUNNER_CMDLINE,
                 to_endpoint);
@@ -105,7 +105,7 @@ static int get_ball_from_previous_player (hbdbus_conn* conn, int pn, const char 
         char prev_player_name [HBDBUS_LEN_RUNNER_NAME + 1];
         sprintf (prev_player_name, "%s%d", PREFIX_PLAYER_RUNNER, pn - 1);
 
-        hbdbus_assemble_endpoint_name (
+        purc_assemble_endpoint_name (
                 hbdbus_conn_own_host_name (conn),
                 hbdbus_conn_app_name (conn), prev_player_name,
                 to_endpoint);
@@ -116,7 +116,7 @@ static int get_ball_from_previous_player (hbdbus_conn* conn, int pn, const char 
             player_name,
             HBDBUS_DEF_TIME_EXPECTED,
             &ret_code, &ret_value);
-    if (err_code == 0 && ret_code == HBDBUS_SC_OK) {
+    if (err_code == 0 && ret_code == PCRDR_SC_OK) {
         struct player_info *info = hbdbus_conn_get_user_data (conn);
         struct tm tm;
         time_t curr_time = time (NULL);
@@ -141,7 +141,7 @@ static int get_ball_from_previous_player (hbdbus_conn* conn, int pn, const char 
         char buff[1204];
         sprintf (buff, "Failed to call getBall: %d (%s); %d (%s)\n",
                 err_code, hbdbus_get_err_message (err_code),
-                ret_code, hbdbus_get_ret_message (ret_code));
+                ret_code, pcrdr_get_ret_message (ret_code));
         my_log (buff);
 #endif
         return -1;
@@ -178,7 +178,7 @@ static int main_of_player (struct run_info *info, int pn)
         goto failed;
     }
 
-    hbdbus_assemble_endpoint_name (
+    purc_assemble_endpoint_name (
             hbdbus_conn_own_host_name (conn),
             info->app_name, HBDBUS_RUNNER_CMDLINE,
             cmdline_endpoint);
@@ -325,7 +325,7 @@ static char* on_method_notify_ready (hbdbus_conn* conn,
     char runner_name [HBDBUS_LEN_RUNNER_NAME + 1];
     struct run_info *info = hbdbus_conn_get_user_data (conn);
 
-    if (hbdbus_extract_runner_name (from_endpoint, runner_name) <= 0) {
+    if (purc_extract_runner_name (from_endpoint, runner_name) <= 0) {
         *err_code = HBDBUS_EC_UNEXPECTED;
         return NULL;
     }
@@ -349,7 +349,7 @@ static char* on_method_notify_ready (hbdbus_conn* conn,
                     HBDBUS_RUNNER_CMDLINE,
                     HBDBUS_DEF_TIME_EXPECTED,
                     &ret_code, &ret_value);
-            if (my_err_code == 0 && ret_code == HBDBUS_SC_OK) {
+            if (my_err_code == 0 && ret_code == PCRDR_SC_OK) {
                 fprintf (stderr, "The ball content:\n%s\n", ret_value);
             }
             else {

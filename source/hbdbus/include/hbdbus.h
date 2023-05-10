@@ -24,13 +24,7 @@
 #ifndef _HBDBUS_H_
 #define _HBDBUS_H_
 
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <ctype.h>
-#include <time.h>
-
-#include <hibox/json.h>
+#include <purc/purc.h>
 
 /* Constants */
 #define HBDBUS_PROTOCOL_NAME             "HBDBUS"
@@ -49,7 +43,7 @@
 #define HBDBUS_PATTERN_OWNER             "$owner"
 
 #define HBDBUS_LOCALHOST                 "localhost"
-#define HBDBUS_APP_HBDBUS                 "cn.fmsoft.hybridos.hbdbus"
+#define HBDBUS_APP_HBDBUS                "cn.fmsoft.hybridos.hbdbus"
 #define HBDBUS_SYS_APPS                  "cn.fmsoft.hybridos.*"
 #define HBDBUS_RUNNER_BUILITIN           "builtin"
 #define HBDBUS_RUNNER_CMDLINE            "cmdline"
@@ -60,40 +54,6 @@
 #define HBDBUS_PRIVATE_PEM_KEY_FILE      "/app/%s/private/private-%s.pem"
 #define HBDBUS_PRIVATE_HMAC_KEY_FILE     "/app/%s/private/hmac-%s.key"
 #define HBDBUS_LEN_PRIVATE_HMAC_KEY      64
-
-/* Status Codes */
-#define HBDBUS_SC_IOERR                  1
-#define HBDBUS_SC_OK                     200
-#define HBDBUS_SC_CREATED                201
-#define HBDBUS_SC_ACCEPTED               202
-#define HBDBUS_SC_NO_CONTENT             204 
-#define HBDBUS_SC_RESET_CONTENT          205
-#define HBDBUS_SC_PARTIAL_CONTENT        206
-#define HBDBUS_SC_BAD_REQUEST            400
-#define HBDBUS_SC_UNAUTHORIZED           401
-#define HBDBUS_SC_FORBIDDEN              403
-#define HBDBUS_SC_NOT_FOUND              404
-#define HBDBUS_SC_METHOD_NOT_ALLOWED     405
-#define HBDBUS_SC_NOT_ACCEPTABLE         406
-#define HBDBUS_SC_CONFLICT               409
-#define HBDBUS_SC_GONE                   410
-#define HBDBUS_SC_PRECONDITION_FAILED    412
-#define HBDBUS_SC_PACKET_TOO_LARGE       413
-#define HBDBUS_SC_EXPECTATION_FAILED     417
-#define HBDBUS_SC_IM_A_TEAPOT            418 
-#define HBDBUS_SC_UNPROCESSABLE_PACKET   422
-#define HBDBUS_SC_LOCKED                 423
-#define HBDBUS_SC_FAILED_DEPENDENCY      424
-#define HBDBUS_SC_TOO_EARLY              425
-#define HBDBUS_SC_UPGRADE_REQUIRED       426
-#define HBDBUS_SC_RETRY_WITH             449
-#define HBDBUS_SC_UNAVAILABLE_FOR_LEGAL_REASONS             451
-#define HBDBUS_SC_INTERNAL_SERVER_ERROR  500
-#define HBDBUS_SC_NOT_IMPLEMENTED        501
-#define HBDBUS_SC_BAD_CALLEE             502
-#define HBDBUS_SC_SERVICE_UNAVAILABLE    503
-#define HBDBUS_SC_CALLEE_TIMEOUT         504
-#define HBDBUS_SC_INSUFFICIENT_STORAGE   507
 
 #define HBDBUS_EC_IO                     (-1)
 #define HBDBUS_EC_CLOSED                 (-2)
@@ -119,14 +79,14 @@
 #define HBDBUS_EC_CANT_LOAD              (-22)
 #define HBDBUS_EC_BAD_KEY                (-23)
 
-#define HBDBUS_LEN_HOST_NAME             127
-#define HBDBUS_LEN_APP_NAME              127
-#define HBDBUS_LEN_RUNNER_NAME           63
-#define HBDBUS_LEN_METHOD_NAME           63
-#define HBDBUS_LEN_BUBBLE_NAME           63
+#define HBDBUS_LEN_HOST_NAME             PURC_LEN_HOST_NAME
+#define HBDBUS_LEN_APP_NAME              PURC_LEN_APP_NAME
+#define HBDBUS_LEN_RUNNER_NAME           PURC_LEN_RUNNER_NAME
+#define HBDBUS_LEN_METHOD_NAME           PURC_LEN_IDENTIFIER
+#define HBDBUS_LEN_BUBBLE_NAME           PURC_LEN_IDENTIFIER
 #define HBDBUS_LEN_ENDPOINT_NAME         \
     (HBDBUS_LEN_HOST_NAME + HBDBUS_LEN_APP_NAME + HBDBUS_LEN_RUNNER_NAME + 3)
-#define HBDBUS_LEN_UNIQUE_ID             63
+#define HBDBUS_LEN_UNIQUE_ID             PURC_LEN_UNIQUE_ID
 
 #define HBDBUS_MIN_PACKET_BUFF_SIZE      512
 #define HBDBUS_DEF_PACKET_BUFF_SIZE      1024
@@ -143,37 +103,6 @@
 
 /* the maximal no responding time (90 seconds) */
 #define HBDBUS_MAX_NO_RESPONDING_TIME    90
-
-/* Connection types */
-enum {
-    CT_UNIX_SOCKET = 1,
-    CT_WEB_SOCKET,
-};
-
-/* The frame operation codes for UnixSocket */
-typedef enum USOpcode_ {
-    US_OPCODE_CONTINUATION = 0x00,
-    US_OPCODE_TEXT = 0x01,
-    US_OPCODE_BIN = 0x02,
-    US_OPCODE_END = 0x03,
-    US_OPCODE_CLOSE = 0x08,
-    US_OPCODE_PING = 0x09,
-    US_OPCODE_PONG = 0x0A,
-} USOpcode;
-
-/* The frame header for UnixSocket */
-typedef struct USFrameHeader_ {
-    int op;
-    unsigned int fragmented;
-    unsigned int sz_payload;
-    unsigned char payload[0];
-} USFrameHeader;
-
-/* packet body types */
-enum {
-    PT_TEXT = 0,
-    PT_BINARY,
-};
 
 /* JSON packet types */
 enum {
@@ -192,8 +121,6 @@ enum {
 
 struct _hbdbus_conn;
 typedef struct _hbdbus_conn hbdbus_conn;
-
-typedef struct json_object hbdbus_json;
 
 struct _hbdbus_pattern_list;
 typedef struct _hbdbus_pattern_list hbdbus_pattern_list;
@@ -219,7 +146,7 @@ extern "C" {
  *
  * Since: 1.0
  */
-const char *hbdbus_get_ret_message(int ret_code);
+const char *pcrdr_get_ret_message(int ret_code);
 
 /**
  * Get the error message of an error code.
@@ -269,25 +196,7 @@ int hbdbus_errcode_to_retcode(int err_code);
  *
  * Since: 1.0
  */
-hbdbus_json *hbdbus_json_object_from_string(const char *json, int len, int depth);
-
-/**
- * Check whether a string is a valid token.
- * 
- * @param token: the pointer to the token string.
- * @param max_len: The maximal possible length of the token string.
- *
- * Checks whether a token string is valid. According to HBDBus protocal,
- * the runner name, method name, bubble name should be a valid token.
- *
- * Note that a string with a length longer than \a max_len will
- * be considered as an invalid token.
- *
- * Returns: true for a valid token, otherwise false.
- *
- * Since: 1.0
- */
-bool hbdbus_is_valid_token(const char *token, int max_len);
+purc_variant_t hbdbus_json_object_from_string(const char *json, int len, int depth);
 
 /**
  * Check whether a string is a valid pattern list.
@@ -304,195 +213,6 @@ bool hbdbus_is_valid_token(const char *token, int max_len);
  * Since: 1.0
  */
 bool hbdbus_is_valid_wildcard_pattern_list(const char *pattern_list);
-
-/**
- * Check whether a string is a valid host name.
- * 
- * @param host_name: the pointer to a string contains a host name.
- *
- * Checks whether a host name is valid.
- *
- * Returns: true for a valid host name, otherwise false.
- *
- * Since: 1.0
- */
-bool hbdbus_is_valid_host_name(const char *host_name);
-
-/**
- * Check whether a string is a valid app name.
- * 
- * @param app_name: the pointer to a string contains an app name.
- *
- * Checks whether an app name is valid.
- *
- * Returns: true for a valid app name, otherwise false.
- *
- * Since: 1.0
- */
-bool hbdbus_is_valid_app_name(const char *app_name);
-
-/**
- * Check whether a string is a valid endpoint name.
- * 
- * @param endpoint_name: the pointer to a string contains an endpoint name.
- *
- * Checks whether an enpoint name is valid. According to HBDBus
- * protocol, a valid endpoint name should having the following pattern:
- *
- *      @<host_name>/<app_name>/<runner_name>
- *
- * Returns: true for a valid endpoint name, otherwise false.
- *
- * Since: 1.0
- */
-bool hbdbus_is_valid_endpoint_name(const char *endpoint_name);
-
-/**
- * Extract host name from endpoint name.
- * 
- * @param endpoint: the pointer to a string contains an endpoint name.
- * @param buff: the buffer used to return the host name in the endpoint name.
- *
- * Extracts the part of host name from an endpoint name.
- *
- * Note that the buffer should be large enough to contain a host name.
- * See \a HBDBUS_LEN_HOST_NAME.
- *
- * Returns: the length of the host name; <= 0 means \a endpoint contains
- * an invalid endpoint name.
- *
- * Since: 1.0
- */
-int hbdbus_extract_host_name(const char *endpoint, char *buff);
-
-/**
- * Extract app name from endpoint name.
- * 
- * @param endpoint: the pointer to a string contains an endpoint name.
- * @param buff: the buffer used to return the sub-string of app name in
- * the endpoint name.
- *
- * Extracts the part of app name from an endpoint name.
- *
- * Returns: the length of the app name; <= 0 means \a endpoint contains
- * an invalid endpoint name.
- *
- * Since: 1.0
- */
-int hbdbus_extract_app_name(const char *endpoint, char *buff);
-
-/**
- * Extract runner name from endpoint name.
- * 
- * @param endpoint: the pointer to a string contains an endpoint name.
- * @param buff: the buffer used to return the sub-string of runner name in
- * the endpoint name.
- *
- * Extracts the part of runner name from an endpoint name.
- *
- * Returns: the length of the runner name; <= 0 means \a endpoint contains
- * an invalid endpoint name.
- *
- * Since: 1.0
- */
-int hbdbus_extract_runner_name(const char *endpoint, char *buff);
-
-/**
- * Extract host name from endpoint name (allocation version).
- * 
- * @param endpoint: the pointer to a string contains an endpoint name.
- *
- * Extracts the part of host name from an endpoint name,
- * allocates a new buffer, copies the host name to the buffer,
- * and returns the pointer to the buffer.
- * 
- * Note that the caller is responsible for releasing the buffer.
- *
- * Returns: the pointer to the new buffer contains the host name if success;
- * NULL for an invalid endpoint name.
- *
- * Since: 1.0
- */
-char *hbdbus_extract_host_name_alloc(const char *endpoint);
-
-/**
- * Extract app name from endpoint name(allocation version).
- * 
- * @param endpoint: the pointer to a string contains an endpoint name.
- *
- * Extracts the part of app name from an endpoint name,
- * allocates a new buffer, copies the app name to the buffer,
- * and returns the pointer to the buffer.
- * 
- * Note that the caller is responsible for releasing the buffer.
- *
- * Returns: the pointer to the new buffer contains the app name if success;
- * NULL for an invalid endpoint name.
- *
- * Since: 1.0
- */
-char *hbdbus_extract_app_name_alloc(const char *endpoint);
-
-/**
- * Extract runner name from endpoint name (allocation version).
- *
- * @param endpoint: the pointer to a string contains an endpoint name.
- *
- * Extracts the part of runner name from an endpoint name,
- * allocates a new buffer, copies the runner name to the buffer,
- * and returns the pointer to the buffer.
- * 
- * Note that the caller is responsible for releasing the buffer.
- *
- * Returns: the pointer to the new buffer contains the runner name if success;
- * NULL for an invalid endpoint name.
- *
- * Since: 1.0
- */
-char *hbdbus_extract_runner_name_alloc(const char *endpoint);
-
-/**
- * Assemble endpoint name.
- *
- * @param host_name: the pointer to a string contains the host name.
- * @param app_name: the pointer to a string contains the app name.
- * @param runner_name: the pointer to a string contains the runner name.
- * @param buff: the buffer used to return the endpoint name string.
- *
- * Assembles an endpoint name from a host name, app name, and
- * runner name.
- * 
- * Note that the caller should prepare the buffer (\a buff) to
- * return the assembled endpoint name.
- *
- * Returns: the lenght of the endpoint name if succes; <= 0
- * if one of the host name, the app name, and the runner name
- * is invalid.
- *
- * Since: 1.0
- */
-int hbdbus_assemble_endpoint_name(const char *host_name, const char *app_name,
-        const char *runner_name, char *buff);
-
-/**
- * Assemble endpoint name (allocation version).
- *
- * @param host_name: the pointer to a string contains the host name.
- * @param app_name: the pointer to a string contains the app name.
- * @param runner_name: the pointer to a string contains the runner name.
- *
- * Assembles an endpoint name from a host name, app name, and
- * runner name, and returns it in a new allocated buffer.
- * 
- * Note that the caller is responsible for releasing the buffer.
- *
- * Returns: the pointer to the new buffer contains the endpoint name
- * if success; NULL otherwise.
- *
- * Since: 1.0
- */
-char *hbdbus_assemble_endpoint_name_alloc(const char *host_name,
-        const char *app_name, const char *runner_name);
 
 /**
  * Sign a data.
@@ -549,7 +269,7 @@ int hbdbus_verify_signature(const char *app_name,
  * hbdbus_json_packet_to_object:
  * @param json: the string contains the JSON text.
  * @param json_len: the length of the JSON text.
- * @param jo: a pointer to hbdbus_json* for returning the json object.
+ * @param jo: a pointer to purc_variant_t for returning the json object.
  *
  * Parses a text packet in JSON format, returns the packet type and
  * a hbdbus_json object.
@@ -561,93 +281,8 @@ int hbdbus_verify_signature(const char *app_name,
  * Since: 1.0
  */
 int hbdbus_json_packet_to_object(const char *json, unsigned int json_len,
-        hbdbus_json **jo);
+        purc_variant_t *jo);
 
-/**
- * Generate an unique identifier.
- *
- * @param id_buff: the buffer to save the identifier.
- * @param prefix: the prefix used for the identifier.
- *
- * Generates a unique id; the size of \a id_buff should be at least 64 long.
- *
- * Returns: none.
- *
- * Since: 1.0
- */
-void hbdbus_generate_unique_id(char *id_buff, const char *prefix);
-
-/**
- * Generate an unique MD5 identifier.
- *
- * @param id_buff: the buffer to save the identifier.
- * @param prefix: the prefix used for the identifier.
- *
- * Generates a unique id by using MD5 digest algorithm.
- * The size of \a id_buff should be at least 33 bytes long.
- *
- * Returns: none.
- *
- * Since: 1.0
- */
-void hbdbus_generate_md5_id(char *id_buff, const char *prefix);
-
-/**
- * Check whether a string is a valid unique identifier.
- *
- * @param id: the unique identifier.
- *
- * Checks whether a unique id is valid.
- *
- * Returns: none.
- *
- * Since: 1.0
- */
-bool hbdbus_is_valid_unique_id(const char *id);
-
-/**
- * Check whether a string is a valid MD5 identifier.
- *
- * @param id: the unique identifier.
- *
- * Checks whether a unique identifier is valid.
- *
- * Returns: none.
- *
- * Since: 1.0
- */
-bool hbdbus_is_valid_md5_id(const char *id);
-
-/**
- * Get the elapsed seconds.
- *
- * @param ts1: the earlier time.
- * @param ts2 (nullable): the later time.
- *
- * Calculates the elapsed seconds between two times.
- * If \a ts2 is NULL, the function uses the current time.
- *
- * Returns: the elapsed time in seconds (a double).
- *
- * Since: 1.0
- */
-double hbdbus_get_elapsed_seconds(const struct timespec *ts1, const struct timespec *ts2);
-
-/**
- * Escape a string for JSON.
- *
- * @param str: the string to escape.
- *
- * Escapes a string for JSON.
- *
- * Returns: A newly allocated string which contains the escaped string.
- *
- * Note that the caller is responsible for releasing the escaped string.
- *
- * Since: 1.0
- */
-char *hbdbus_escape_string_for_json(const char *str);
- 
 /**@}*/
 
 /**
@@ -726,7 +361,7 @@ int hbdbus_free_connection(hbdbus_conn* conn);
  *
  * Since: 1.0
  */
-typedef void (*hbdbus_error_handler)(hbdbus_conn* conn, const hbdbus_json *jo);
+typedef void (*hbdbus_error_handler)(hbdbus_conn* conn, const purc_variant_t jo);
 
 /**
  * hbdbus_conn_get_error_handler:
@@ -1263,28 +898,6 @@ int hbdbus_wait_and_dispatch_packet(hbdbus_conn* conn, int timeout_ms);
  */
 
 /**
- * Check whether a string is a valid runner name.
- *
- * @param runner_name: the pointer to the runner name string.
- *
- * Checks whether a runner name is valid. According to HBDBus protocal,
- * the runner name should be a valid token and not longer than
- * \a HBDBUS_LEN_RUNNER_NAME.
- *
- * Note that a string with a length longer than \a HBDBUS_LEN_RUNNER_NAME will
- * be considered as an invalid runner name.
- *
- * Returns: true for a valid token, otherwise false.
- *
- * Since: 1.0
- */
-static inline bool
-hbdbus_is_valid_runner_name(const char *runner_name)
-{
-    return hbdbus_is_valid_token(runner_name, HBDBUS_LEN_RUNNER_NAME);
-}
-
-/**
  * Check whether a string is a valid method name.
  *
  * @param method_name: the pointer to the method name string.
@@ -1303,7 +916,7 @@ hbdbus_is_valid_runner_name(const char *runner_name)
 static inline bool
 hbdbus_is_valid_method_name(const char *method_name)
 {
-    return hbdbus_is_valid_token(method_name, HBDBUS_LEN_METHOD_NAME);
+    return purc_is_valid_token(method_name, HBDBUS_LEN_METHOD_NAME);
 }
 
 /**
@@ -1325,140 +938,7 @@ hbdbus_is_valid_method_name(const char *method_name)
 static inline bool
 hbdbus_is_valid_bubble_name(const char *bubble_name)
 {
-    return hbdbus_is_valid_token(bubble_name, HBDBUS_LEN_BUBBLE_NAME);
-}
-
-/**
- * Convert a string to lowercases in place.
- *
- * @param name: the pointer to a name string(not nullable).
- *
- * Converts a name string lowercase in place.
- *
- * Returns: the length of the name string.
- *
- * Since: 1.0
- */
-static inline int
-hbdbus_name_tolower(char *name)
-{
-    int i = 0;
-
-    while (name [i]) {
-        name [i] = tolower(name[i]);
-        i++;
-    }
-
-    return i;
-}
-
-/**
- * Convert a string to uppercases in place.
- *
- * @param name: the pointer to a name string (not nullable).
- *
- * Converts a name string uppercase in place.
- *
- * Returns: the length of the name string.
- *
- * Since: 1.0
- */
-static inline int
-hbdbus_name_toupper(char *name)
-{
-    int i = 0;
-
-    while (name [i]) {
-        name [i] = toupper(name[i]);
-        i++;
-    }
-
-    return i;
-}
-
-/**
- * Convert a string to lowercases and copy to another buffer.
- *
- * @param name: the pointer to a name string (not nullable).
- * @param buff: the buffer used to return the converted name string (not nullable).
- * @param max_len: The maximal length of the name string to convert.
- *
- * Converts a name string lowercase and copies the letters to
- * the specified buffer.
- *
- * Note that if \a max_len <= 0, the argument will be ignored.
- *
- * Returns: the total number of letters converted.
- *
- * Since: 1.0
- */
-static inline int
-hbdbus_name_tolower_copy(const char *name, char *buff, int max_len)
-{
-    int n = 0;
-
-    while (*name) {
-        buff [n] = tolower(*name);
-        name++;
-        n++;
-
-        if (max_len > 0 && n == max_len)
-            break;
-    }
-
-    buff [n] = '\0';
-    return n;
-}
-
-/**
- * Convert a string to uppercases and copy to another buffer.
- *
- * @param name: the pointer to a name string (not nullable).
- * @param buff: the buffer used to return the converted name string (not nullable).
- * @param max_len: The maximal length of the name string to convert.
- *
- * Converts a name string uppercase and copies the letters to
- * the specified buffer.
- *
- * Note that if \a max_len <= 0, the argument will be ignored.
- *
- * Returns: the total number of letters converted.
- *
- * Since: 1.0
- */
-static inline int
-hbdbus_name_toupper_copy(const char *name, char *buff, int max_len)
-{
-    int n = 0;
-
-    while (*name) {
-        buff [n] = toupper(*name);
-        name++;
-        n++;
-
-        if (max_len > 0 && n == max_len)
-            break;
-    }
-
-    buff [n] = '\0';
-    return n;
-}
-
-/**
- * Get monotonic time in seconds
- *
- * Gets the monotoic time in seconds.
- *
- * Returns: the the monotoic time in seconds.
- *
- * Since: 1.0
- */
-static inline time_t hbdbus_get_monotoic_time(void)
-{
-    struct timespec tp;
-
-    clock_gettime(CLOCK_MONOTONIC, &tp);
-    return tp.tv_sec;
+    return purc_is_valid_token(bubble_name, HBDBUS_LEN_BUBBLE_NAME);
 }
 
 /**@}*/

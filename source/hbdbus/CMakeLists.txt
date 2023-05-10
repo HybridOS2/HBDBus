@@ -11,6 +11,9 @@ set(HBDBus_PRIVATE_INCLUDE_DIRECTORIES
 list(APPEND HBDBus_SOURCES
     "${HBDBUS_DIR}/common/libhbdbus.c"
     "${HBDBUS_DIR}/common/helpers.c"
+    "${HBDBUS_DIR}/common/avl.c"
+    "${HBDBUS_DIR}/common/avl-cmp.c"
+    "${HBDBUS_DIR}/common/kvlist.c"
     "${HBDBUS_DIR}/common/sign_verify_rsa_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_hmac_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_dummy.c"
@@ -35,6 +38,11 @@ list(APPEND HBDBus_INTERFACE_DEPENDENCIES HBDBus_CopyPrivateHeaders)
 if (NOT INTERNAL_BUILD)
     add_dependencies(HBDBus_CopyPrivateHeaders HBDBus)
 endif ()
+
+list(APPEND HBDBus_LIBRARIES
+    PurC::PurC
+    ${GLIB_LIBRARIES}
+)
 
 HBDBUS_COMPUTE_SOURCES(HBDBus)
 HBDBUS_FRAMEWORK(HBDBus)
@@ -68,7 +76,11 @@ include(target/HBDBus)
 HBDBUS_EXECUTABLE_DECLARE(hbdbusd)
 
 list(APPEND hbdbusd_PRIVATE_INCLUDE_DIRECTORIES
+    "${CMAKE_BINARY_DIR}"
+    "${HBDBUS_DIR}"
     "${HBDBUS_DIR}/include"
+    "${HBDBus_DERIVED_SOURCES_DIR}"
+    "${FORWARDING_HEADERS_DIR}"
 )
 
 HBDBUS_EXECUTABLE(hbdbusd)
@@ -104,7 +116,11 @@ install(TARGETS hbdbusd DESTINATION "${SYSEXEC_INSTALL_DIR}/")
 HBDBUS_EXECUTABLE_DECLARE(hbdbuscl)
 
 list(APPEND hbdbuscl_PRIVATE_INCLUDE_DIRECTORIES
+    "${CMAKE_BINARY_DIR}"
+    "${HBDBUS_DIR}"
     "${HBDBUS_DIR}/include"
+    "${HBDBus_DERIVED_SOURCES_DIR}"
+    "${FORWARDING_HEADERS_DIR}"
 )
 
 HBDBUS_EXECUTABLE(hbdbuscl)

@@ -35,13 +35,9 @@
 #include <sys/un.h>
 #include <sys/time.h>
 
-#include <hibox/utils.h>
-#include <hibox/ulog.h>
-#include <hibox/md5.h>
-#include <hibox/json.h>
-#include <hibox/kvlist.h>
-
 #include "hbdbus.h"
+#include "internal/kvlist.h"
+#include "internal/log.h"
 
 struct _hbdbus_conn {
     int type;
@@ -115,7 +111,7 @@ int hbdbus_conn_get_last_ret_code (hbdbus_conn *conn)
 int hbdbus_conn_endpoint_name (hbdbus_conn* conn, char *buff)
 {
     if (conn->own_host_name && conn->app_name && conn->runner_name) {
-        return hbdbus_assemble_endpoint_name (conn->own_host_name,
+        return purc_assemble_endpoint_name (conn->own_host_name,
                 conn->app_name, conn->runner_name, buff);
     }
 
@@ -125,7 +121,7 @@ int hbdbus_conn_endpoint_name (hbdbus_conn* conn, char *buff)
 char *hbdbus_conn_endpoint_name_alloc (hbdbus_conn* conn)
 {
     if (conn->own_host_name && conn->app_name && conn->runner_name) {
-        return hbdbus_assemble_endpoint_name_alloc (conn->own_host_name,
+        return purc_assemble_endpoint_name_alloc (conn->own_host_name,
                 conn->app_name, conn->runner_name);
     }
 
@@ -146,20 +142,20 @@ static char* read_text_payload_from_us (int fd, int* len)
             payload = malloc (header.sz_payload + 1);
         }
         else {
-            ULOG_WARN ("Bad payload type (%d) and length (%d)\n",
+            LOG_WARN ("Bad payload type (%d) and length (%d)\n",
                     header.op, header.sz_payload);
             return NULL;  /* must not the challenge code */
         }
     }
 
     if (payload == NULL) {
-        ULOG_ERR ("Failed to allocate memory for payload.\n");
+        LOG_ERR ("Failed to allocate memory for payload.\n");
         return NULL;
     }
     else {
         n = read (fd, payload, header.sz_payload);
         if (n < header.sz_payload) {
-            ULOG_ERR ("Failed to read payload.\n");
+            LOG_ERR ("Failed to read payload.\n");
             goto failed;
         }
 
@@ -180,7 +176,7 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
     int err_code = 0;
     char* payload;
     int len;
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *ch_code = NULL;
 
     // TODO: handle WebSocket connection
@@ -190,8 +186,8 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
         goto failed;
     }
 
-    jo = hbdbus_json_object_from_string (payload, len, 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(payload, len);
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         err_code = HBDBUS_EC_BAD_PACKET;
         goto failed;
     }
@@ -199,35 +195,35 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
     free (payload);
     payload = NULL;
 
-    if (json_object_object_get_ex (jo, "packetType", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "packetType"))) {
         const char *pack_type;
-        pack_type = json_object_get_string (jo_tmp);
+        pack_type = purc_variant_get_string_const (jo_tmp);
 
         if (strcasecmp (pack_type, "error") == 0) {
             const char* prot_name = HBDBUS_NOT_AVAILABLE;
             int prot_ver = 0, ret_code = 0;
             const char *ret_msg = HBDBUS_NOT_AVAILABLE, *extra_msg = HBDBUS_NOT_AVAILABLE;
 
-            ULOG_WARN ("Refued by server:\n");
-            if (json_object_object_get_ex (jo, "protocolName", &jo_tmp)) {
-                prot_name = json_object_get_string (jo_tmp);
+            LOG_WARN ("Refued by server:\n");
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "protocolName"))) {
+                prot_name = purc_variant_get_string_const(jo_tmp);
             }
 
-            if (json_object_object_get_ex (jo, "protocolVersion", &jo_tmp)) {
-                prot_ver = json_object_get_int (jo_tmp);
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "protocolVersion"))) {
+                purc_variant_cast_to_int32(jo_tmp, &prot_ver, true);
             }
-            ULOG_WARN ("  Protocol: %s/%d\n", prot_name, prot_ver);
+            LOG_WARN ("  Protocol: %s/%d\n", prot_name, prot_ver);
 
-            if (json_object_object_get_ex (jo, "retCode", &jo_tmp)) {
-                ret_code = json_object_get_int (jo_tmp);
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "retCode"))) {
+                purc_variant_cast_to_int32(jo_tmp, &ret_code, true);
             }
-            if (json_object_object_get_ex (jo, "retMsg", &jo_tmp)) {
-                ret_msg = json_object_get_string (jo_tmp);
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "retMsg"))) {
+                ret_msg = purc_variant_get_string_const(jo_tmp);
             }
-            if (json_object_object_get_ex (jo, "extraMsg", &jo_tmp)) {
-                extra_msg = json_object_get_string (jo_tmp);
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "extraMsg"))) {
+                extra_msg = purc_variant_get_string_const(jo_tmp);
             }
-            ULOG_WARN ("  Error Info: %d (%s): %s\n", ret_code, ret_msg, extra_msg);
+            LOG_WARN ("  Error Info: %d (%s): %s\n", ret_code, ret_msg, extra_msg);
 
             err_code = HBDBUS_EC_SERVER_REFUSED;
             goto failed;
@@ -236,32 +232,32 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
             const char *prot_name = HBDBUS_NOT_AVAILABLE;
             int prot_ver = 0;
 
-            if (json_object_object_get_ex (jo, "challengeCode", &jo_tmp)) {
-                ch_code = json_object_get_string (jo_tmp);
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "challengeCode"))) {
+                ch_code = purc_variant_get_string_const(jo_tmp);
             }
 
-            if (json_object_object_get_ex (jo, "protocolName", &jo_tmp)) {
-                prot_name = json_object_get_string (jo_tmp);
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "protocolName"))) {
+                prot_name = purc_variant_get_string_const (jo_tmp);
             }
-            if (json_object_object_get_ex (jo, "protocolVersion", &jo_tmp)) {
-                prot_ver = json_object_get_int (jo_tmp);
+            if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "protocolVersion"))) {
+                purc_variant_cast_to_int32(jo_tmp, &prot_ver, true);
             }
 
             if (ch_code == NULL) {
-                ULOG_WARN ("Null challenge code\n");
+                LOG_WARN ("Null challenge code\n");
                 err_code = HBDBUS_EC_BAD_PACKET;
                 goto failed;
             }
             else if (strcasecmp (prot_name, HBDBUS_PROTOCOL_NAME) ||
                     prot_ver < HBDBUS_PROTOCOL_VERSION) {
-                ULOG_WARN ("Protocol not matched: %s/%d\n", prot_name, prot_ver);
+                LOG_WARN ("Protocol not matched: %s/%d\n", prot_name, prot_ver);
                 err_code = HBDBUS_EC_PROTOCOL;
                 goto failed;
             }
         }
     }
     else {
-        ULOG_WARN ("No packetType field\n");
+        LOG_WARN ("No packetType field\n");
         err_code = HBDBUS_EC_BAD_PACKET;
         goto failed;
     }
@@ -273,9 +269,9 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref(jo);
     if (payload)
-        free (payload);
+        free(payload);
 
     return err_code;
 }
@@ -296,8 +292,8 @@ static int send_auth_info (hbdbus_conn *conn, const char* ch_code)
         return err_code;
     }
 
-    enc_sig_len = B64_ENCODE_LEN (sig_len);
-    enc_sig = malloc (enc_sig_len);
+    enc_sig_len = pcutils_b64_encoded_length(sig_len);
+    enc_sig = malloc(enc_sig_len);
     if (enc_sig == NULL) {
         err_code = HBDBUS_EC_NOMEM;
         goto failed;
@@ -305,12 +301,12 @@ static int send_auth_info (hbdbus_conn *conn, const char* ch_code)
 
     // When encode the signature in base64 or exadecimal notation,
     // there will be no any '"' and '\' charecters.
-    b64_encode (sig, sig_len, enc_sig, enc_sig_len);
+    pcutils_b64_encode(sig, sig_len, enc_sig, enc_sig_len);
 
-    free (sig);
+    free(sig);
     sig = NULL;
 
-    n = snprintf (buff, sizeof (buff), 
+    n = snprintf(buff, sizeof (buff), 
             "{"
             "\"packetType\":\"auth\","
             "\"protocolName\":\"%s\","
@@ -329,13 +325,13 @@ static int send_auth_info (hbdbus_conn *conn, const char* ch_code)
         goto failed;
     }
     else if ((size_t)n >= sizeof (buff)) {
-        ULOG_ERR ("Too small buffer for signature (%s) in send_auth_info.\n", enc_sig);
+        LOG_ERR ("Too small buffer for signature (%s) in send_auth_info.\n", enc_sig);
         err_code = HBDBUS_EC_TOO_SMALL_BUFF;
         goto failed;
     }
 
     if (hbdbus_send_text_packet (conn, buff, n)) {
-        ULOG_ERR ("Failed to send text packet to HBDBus server in send_auth_info.\n");
+        LOG_ERR ("Failed to send text packet to HBDBus server in send_auth_info.\n");
         err_code = HBDBUS_EC_IO;
         goto failed;
     }
@@ -357,33 +353,33 @@ static void on_lost_event_generator (hbdbus_conn* conn,
 {
     (void)from_endpoint;
     (void)from_bubble;
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *endpoint_name = NULL;
     const char* event_name;
     void *next, *data;
 
-    jo = hbdbus_json_object_from_string (bubble_data, strlen (bubble_data), 2);
+    jo = purc_variant_make_from_json_string(bubble_data, strlen(bubble_data));
     if (jo == NULL) {
-        ULOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTGENERATOR`\n");
+        LOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTGENERATOR`\n");
         return;
     }
 
-    if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
-            (endpoint_name = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "endpointName")) &&
+            (endpoint_name = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        ULOG_ERR ("Fatal error: no endpointName field in the packet!\n");
+        LOG_ERR ("Fatal error: no endpointName field in the packet!\n");
         return;
     }
 
-    kvlist_for_each_safe (&conn->subscribed_list, event_name, next, data) {
-        const char* end_of_endpoint = strrchr (event_name, '/');
+    kvlist_for_each_safe(&conn->subscribed_list, event_name, next, data) {
+        const char* end_of_endpoint = strrchr(event_name, '/');
 
-        if (strncasecmp (event_name, endpoint_name, end_of_endpoint - event_name) == 0) {
-            ULOG_INFO ("Matched an event (%s) in subscribed events for %s\n",
+        if (strncasecmp(event_name, endpoint_name, end_of_endpoint - event_name) == 0) {
+            LOG_INFO ("Matched an event (%s) in subscribed events for %s\n",
                     event_name, endpoint_name);
 
-            kvlist_delete (&conn->subscribed_list, event_name);
+            kvlist_delete(&conn->subscribed_list, event_name);
         }
     }
 }
@@ -395,78 +391,78 @@ static void on_lost_event_bubble (hbdbus_conn* conn,
     (void)from_endpoint;
     (void)from_bubble;
     int n;
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *endpoint_name = NULL;
     const char *bubble_name = NULL;
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
 
-    jo = hbdbus_json_object_from_string (bubble_data, strlen (bubble_data), 2);
+    jo = purc_variant_make_from_json_string(bubble_data, strlen(bubble_data));
     if (jo == NULL) {
-        ULOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTBUBBLE`\n");
+        LOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTBUBBLE`\n");
         return;
     }
 
-    if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
-            (endpoint_name = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "endpointName")) &&
+            (endpoint_name = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        ULOG_ERR ("Fatal error: no endpointName in the packet!\n");
+        LOG_ERR ("Fatal error: no endpointName in the packet!\n");
         return;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
-            (bubble_name = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "bubbleName")) &&
+            (bubble_name = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        ULOG_ERR ("Fatal error: no bubbleName in the packet!\n");
+        LOG_ERR ("Fatal error: no bubbleName in the packet!\n");
         return;
     }
 
-    n = hbdbus_name_tolower_copy (endpoint_name, event_name, HBDBUS_LEN_ENDPOINT_NAME);
+    n = purc_name_tolower_copy(endpoint_name, event_name, HBDBUS_LEN_ENDPOINT_NAME);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    hbdbus_name_toupper_copy (bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
-    if (!kvlist_get (&conn->subscribed_list, event_name))
+    purc_name_toupper_copy(bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    if (!kvlist_get(&conn->subscribed_list, event_name))
         return;
 
-    kvlist_delete (&conn->subscribed_list, event_name);
+    kvlist_delete(&conn->subscribed_list, event_name);
 }
 
 /* add systen event handlers here */
-static int on_auth_passed (hbdbus_conn* conn, const hbdbus_json *jo)
+static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
 {
     int n;
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
     const char* srv_host_name;
     const char* own_host_name;
     hbdbus_event_handler event_handler;
 
-    if (json_object_object_get_ex (jo, "serverHostName", &jo_tmp) &&
-            (srv_host_name = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "serverHostName")) &&
+            (srv_host_name = purc_variant_get_string_const(jo_tmp))) {
         if (conn->srv_host_name)
             free (conn->srv_host_name);
 
         conn->srv_host_name = strdup (srv_host_name);
     }
     else {
-        ULOG_ERR ("Fatal error: no serverHostName in authPassed packet!\n");
+        LOG_ERR ("Fatal error: no serverHostName in authPassed packet!\n");
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (json_object_object_get_ex (jo, "reassignedHostName", &jo_tmp) &&
-            (own_host_name = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "reassignedHostName")) &&
+            (own_host_name = purc_variant_get_string_const(jo_tmp))) {
         if (conn->own_host_name)
             free (conn->own_host_name);
 
         conn->own_host_name = strdup (own_host_name);
     }
     else {
-        ULOG_ERR ("Fatal error: no reassignedHostName in authPassed packet!\n");
+        LOG_ERR ("Fatal error: no reassignedHostName in authPassed packet!\n");
         return HBDBUS_EC_PROTOCOL;
     }
 
-    n = hbdbus_assemble_endpoint_name (srv_host_name,
+    n = purc_assemble_endpoint_name (srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, event_name);
     event_name [n++] = '/';
     event_name [n] = '\0';
@@ -474,11 +470,11 @@ static int on_auth_passed (hbdbus_conn* conn, const hbdbus_json *jo)
 
     event_handler = on_lost_event_generator;
     if (!kvlist_set (&conn->subscribed_list, event_name, &event_handler)) {
-        ULOG_ERR ("Failed to register callback for system event `LOSTEVENTGENERATOR`!\n");
+        LOG_ERR ("Failed to register callback for system event `LOSTEVENTGENERATOR`!\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
-    n = hbdbus_assemble_endpoint_name (srv_host_name,
+    n = purc_assemble_endpoint_name (srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, event_name);
     event_name [n++] = '/';
     event_name [n] = '\0';
@@ -486,7 +482,7 @@ static int on_auth_passed (hbdbus_conn* conn, const hbdbus_json *jo)
 
     event_handler = on_lost_event_bubble;
     if (!kvlist_set (&conn->subscribed_list, event_name, &event_handler)) {
-        ULOG_ERR ("Failed to register callback for system event `LOSTEVENTBUBBLE`!\n");
+        LOG_ERR ("Failed to register callback for system event `LOSTEVENTBUBBLE`!\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
@@ -497,17 +493,17 @@ static int check_auth_result (hbdbus_conn* conn)
 {
     char *packet;
     unsigned int data_len;
-    hbdbus_json *jo;
+    purc_variant_t jo;
     int retval, err_code;
 
     err_code = hbdbus_read_packet_alloc (conn, &packet, &data_len);
     if (err_code) {
-        ULOG_ERR ("Failed to read packet\n");
+        LOG_ERR ("Failed to read packet\n");
         return err_code;
     }
 
     if (data_len == 0) {
-        ULOG_ERR ("Unexpected\n");
+        LOG_ERR ("Unexpected\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
@@ -515,28 +511,28 @@ static int check_auth_result (hbdbus_conn* conn)
     free (packet);
 
     if (retval < 0) {
-        ULOG_ERR ("Failed to parse JSON packet\n");
+        LOG_ERR ("Failed to parse JSON packet\n");
         err_code = HBDBUS_EC_BAD_PACKET;
     }
     else if (retval == JPT_AUTH_PASSED) {
-        ULOG_WARN ("Passed the authentication\n");
+        LOG_WARN ("Passed the authentication\n");
         err_code = on_auth_passed (conn, jo);
-        ULOG_ERR ("return value of on_auth_passed: %d\n", retval);
+        LOG_ERR ("return value of on_auth_passed: %d\n", retval);
     }
     else if (retval == JPT_AUTH_FAILED) {
-        ULOG_WARN ("Failed the authentication\n");
+        LOG_WARN ("Failed the authentication\n");
         err_code = HBDBUS_EC_AUTH_FAILED;
     }
     else if (retval == JPT_ERROR) {
-        ULOG_WARN ("Got an error\n");
+        LOG_WARN ("Got an error\n");
         err_code = HBDBUS_EC_SERVER_REFUSED;
     }
     else {
-        ULOG_WARN ("Got an unexpected packet: %d\n", retval);
+        LOG_WARN ("Got an unexpected packet: %d\n", retval);
         err_code = HBDBUS_EC_UNEXPECTED;
     }
 
-    json_object_put (jo);
+    purc_variant_unref(jo);
     return err_code;
 }
 
@@ -553,32 +549,32 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
     char *ch_code = NULL;
 
     if ((*conn = calloc (1, sizeof (hbdbus_conn))) == NULL) {
-        ULOG_ERR ("Failed to callocate space for connection: %s\n",
+        LOG_ERR ("Failed to callocate space for connection: %s\n",
                 strerror (errno));
         return HBDBUS_EC_NOMEM;
     }
 
     /* create a Unix domain stream socket */
     if ((fd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        ULOG_ERR ("Failed to call `socket` in hbdbus_connect_via_unix_socket: %s\n",
+        LOG_ERR ("Failed to call `socket` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         return HBDBUS_EC_IO;
     }
 
     {
-        md5_ctx_t ctx;
+        pcutils_md5_ctxt ctx;
         unsigned char md5_digest[16];
 
-        md5_begin (&ctx);
-        md5_hash (app_name, strlen (app_name), &ctx);
-        md5_hash ("/", 1, &ctx);
-        md5_hash (runner_name, strlen (runner_name), &ctx);
-        md5_end (md5_digest, &ctx);
-        bin2hex (md5_digest, 16, peer_name);
+        pcutils_md5_begin(&ctx);
+        pcutils_md5_hash(&ctx, app_name, strlen(app_name));
+        pcutils_md5_hash(&ctx, "/", 1);
+        pcutils_md5_hash(&ctx, runner_name, strlen(runner_name));
+        pcutils_md5_end(&ctx, md5_digest);
+        pcutils_bin2hex(md5_digest, 16, peer_name, false);
     }
 
     /* fill socket address structure w/our address */
-    memset (&unix_addr, 0, sizeof(unix_addr));
+    memset(&unix_addr, 0, sizeof(unix_addr));
     unix_addr.sun_family = AF_UNIX;
     /* On Linux sun_path is 108 bytes in size */
     sprintf (unix_addr.sun_path, "%s%s-%05d", CLI_PATH, peer_name, getpid());
@@ -586,12 +582,12 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
 
     unlink (unix_addr.sun_path);        /* in case it already exists */
     if (bind (fd, (struct sockaddr *) &unix_addr, len) < 0) {
-        ULOG_ERR ("Failed to call `bind` in hbdbus_connect_via_unix_socket: %s\n",
+        LOG_ERR ("Failed to call `bind` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         goto error;
     }
     if (chmod (unix_addr.sun_path, CLI_PERM) < 0) {
-        ULOG_ERR ("Failed to call `chmod` in hbdbus_connect_via_unix_socket: %s\n",
+        LOG_ERR ("Failed to call `chmod` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         goto error;
     }
@@ -603,7 +599,7 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
     len = sizeof (unix_addr.sun_family) + strlen (unix_addr.sun_path);
 
     if (connect (fd, (struct sockaddr *) &unix_addr, len) < 0) {
-        ULOG_ERR ("Failed to call `connect` in hbdbus_connect_via_unix_socket: %s\n",
+        LOG_ERR ("Failed to call `connect` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         goto error;
     }
@@ -749,7 +745,7 @@ int hbdbus_disconnect (hbdbus_conn* conn)
         header.fragmented = 0;
         header.sz_payload = 0;
         if (conn_write (conn->fd, &header, sizeof (USFrameHeader))) {
-            ULOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
+            LOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
             err_code = HBDBUS_EC_IO;
         }
     }
@@ -775,7 +771,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
         USFrameHeader header;
 
         if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-            ULOG_ERR ("Failed to read frame header from Unix socket\n");
+            LOG_ERR ("Failed to read frame header from Unix socket\n");
             err_code = HBDBUS_EC_IO;
             goto done;
         }
@@ -796,7 +792,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             return 0;
         }
         else if (header.op == US_OPCODE_CLOSE) {
-            ULOG_WARN ("Peer closed\n");
+            LOG_WARN ("Peer closed\n");
             err_code = HBDBUS_EC_CLOSED;
             goto done;
         }
@@ -818,7 +814,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             }
 
             if (conn_read (conn->fd, packet_buf, header.sz_payload)) {
-                ULOG_ERR ("Failed to read packet from Unix socket\n");
+                LOG_ERR ("Failed to read packet from Unix socket\n");
                 err_code = HBDBUS_EC_IO;
                 goto done;
             }
@@ -831,20 +827,20 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             offset = header.sz_payload;
             while (left > 0) {
                 if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-                    ULOG_ERR ("Failed to read frame header from Unix socket\n");
+                    LOG_ERR ("Failed to read frame header from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
 
                 if (header.op != US_OPCODE_CONTINUATION &&
                         header.op != US_OPCODE_END) {
-                    ULOG_ERR ("Not a continuation frame\n");
+                    LOG_ERR ("Not a continuation frame\n");
                     err_code = HBDBUS_EC_PROTOCOL;
                     goto done;
                 }
 
                 if (conn_read (conn->fd, packet_buf + offset, header.sz_payload)) {
-                    ULOG_ERR ("Failed to read packet from Unix socket\n");
+                    LOG_ERR ("Failed to read packet from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
@@ -866,7 +862,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             }
         }
         else {
-            ULOG_ERR ("Bad packet op code: %d\n", header.op);
+            LOG_ERR ("Bad packet op code: %d\n", header.op);
             err_code = HBDBUS_EC_PROTOCOL;
         }
     }
@@ -897,7 +893,7 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
         USFrameHeader header;
 
         if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-            ULOG_ERR ("Failed to read frame header from Unix socket\n");
+            LOG_ERR ("Failed to read frame header from Unix socket\n");
             err_code = HBDBUS_EC_IO;
             goto done;
         }
@@ -921,7 +917,7 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
             return 0;
         }
         else if (header.op == US_OPCODE_CLOSE) {
-            ULOG_WARN ("Peer closed\n");
+            LOG_WARN ("Peer closed\n");
             err_code = HBDBUS_EC_CLOSED;
             goto done;
         }
@@ -960,27 +956,27 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
             }
 
             if (conn_read (conn->fd, packet_buf, header.sz_payload)) {
-                ULOG_ERR ("Failed to read packet from Unix socket\n");
+                LOG_ERR ("Failed to read packet from Unix socket\n");
                 err_code = HBDBUS_EC_IO;
                 goto done;
             }
 
             while (left > 0) {
                 if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-                    ULOG_ERR ("Failed to read frame header from Unix socket\n");
+                    LOG_ERR ("Failed to read frame header from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
 
                 if (header.op != US_OPCODE_CONTINUATION &&
                         header.op != US_OPCODE_END) {
-                    ULOG_ERR ("Not a continuation frame\n");
+                    LOG_ERR ("Not a continuation frame\n");
                     err_code = HBDBUS_EC_PROTOCOL;
                     goto done;
                 }
 
                 if (conn_read (conn->fd, packet_buf + offset, header.sz_payload)) {
-                    ULOG_ERR ("Failed to read packet from Unix socket\n");
+                    LOG_ERR ("Failed to read packet from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
@@ -1003,7 +999,7 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
             goto done;
         }
         else {
-            ULOG_ERR ("Bad packet op code: %d\n", header.op);
+            LOG_ERR ("Bad packet op code: %d\n", header.op);
             err_code = HBDBUS_EC_PROTOCOL;
             goto done;
         }
@@ -1097,7 +1093,7 @@ int hbdbus_ping_server (hbdbus_conn* conn)
         header.fragmented = 0;
         header.sz_payload = 0;
         if (conn_write (conn->fd, &header, sizeof (USFrameHeader))) {
-            ULOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
+            LOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
             err_code = HBDBUS_EC_IO;
         }
     }
@@ -1127,11 +1123,11 @@ int hbdbus_call_procedure_and_wait (hbdbus_conn* conn, const char* endpoint,
     if (!hbdbus_is_valid_method_name (method_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    escaped_param = hbdbus_escape_string_for_json (method_param);
+    escaped_param = pcutils_escape_string_for_json (method_param);
     if (escaped_param == NULL)
         return HBDBUS_EC_NOMEM;
 
-    hbdbus_generate_unique_id (call_id, "call");
+    purc_generate_unique_id (call_id, "call");
 
     n = snprintf (buff, sizeof (buff), 
             "{"
@@ -1186,7 +1182,7 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
     if (!hbdbus_is_valid_wildcard_pattern_list (for_app)) {
         return HBDBUS_EC_INVALID_VALUE;
     }
-    hbdbus_name_tolower_copy (method_name, normalized_method, HBDBUS_LEN_METHOD_NAME);
+    purc_name_tolower_copy (method_name, normalized_method, HBDBUS_LEN_METHOD_NAME);
 
     if (kvlist_get (&conn->method_list, normalized_method))
         return HBDBUS_EC_DUPLICATED;
@@ -1206,7 +1202,7 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
     else if ((size_t)n >= sizeof (param_buff))
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
-    hbdbus_assemble_endpoint_name (conn->srv_host_name,
+    purc_assemble_endpoint_name (conn->srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
@@ -1215,7 +1211,7 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
         return err_code;
     }
 
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         kvlist_set (&conn->method_list, normalized_method, mhi);
         if (ret_value)
             free (ret_value);
@@ -1254,7 +1250,7 @@ int hbdbus_revoke_procedure (hbdbus_conn* conn, const char* method_name)
     if (!hbdbus_is_valid_method_name (method_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    hbdbus_name_tolower_copy (method_name, normalized_method, HBDBUS_LEN_METHOD_NAME);
+    purc_name_tolower_copy (method_name, normalized_method, HBDBUS_LEN_METHOD_NAME);
 
     if (!kvlist_get (&conn->method_list, normalized_method))
         return HBDBUS_EC_INVALID_VALUE;
@@ -1271,7 +1267,7 @@ int hbdbus_revoke_procedure (hbdbus_conn* conn, const char* method_name)
     else if ((size_t)n >= sizeof (param_buff))
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
-    hbdbus_assemble_endpoint_name (conn->srv_host_name,
+    purc_assemble_endpoint_name (conn->srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
@@ -1280,7 +1276,7 @@ int hbdbus_revoke_procedure (hbdbus_conn* conn, const char* method_name)
         return err_code;
     }
 
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         kvlist_delete (&conn->method_list, normalized_method);
 
         if (ret_value)
@@ -1312,7 +1308,7 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
         return HBDBUS_EC_INVALID_VALUE;
     }
 
-    hbdbus_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
+    purc_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
     if (kvlist_get (&conn->bubble_list, normalized_bubble))
         return HBDBUS_EC_DUPLICATED;
 
@@ -1331,7 +1327,7 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
     else if ((size_t)n >= sizeof (param_buff))
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
-    hbdbus_assemble_endpoint_name (conn->srv_host_name,
+    purc_assemble_endpoint_name (conn->srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
@@ -1340,7 +1336,7 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
         return err_code;
     }
 
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         kvlist_set (&conn->bubble_list, normalized_bubble, hbdbus_register_event);
 
         if (ret_value)
@@ -1364,7 +1360,7 @@ int hbdbus_revoke_event (hbdbus_conn* conn, const char* bubble_name)
     if (!hbdbus_is_valid_bubble_name (bubble_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    hbdbus_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
+    purc_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
     if (!kvlist_get (&conn->bubble_list, normalized_bubble))
         return HBDBUS_EC_INVALID_VALUE;
 
@@ -1380,7 +1376,7 @@ int hbdbus_revoke_event (hbdbus_conn* conn, const char* bubble_name)
     else if ((size_t)n >= sizeof (param_buff))
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
-    hbdbus_assemble_endpoint_name (conn->srv_host_name,
+    purc_assemble_endpoint_name (conn->srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
@@ -1389,7 +1385,7 @@ int hbdbus_revoke_event (hbdbus_conn* conn, const char* bubble_name)
         return err_code;
     }
 
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         kvlist_delete (&conn->bubble_list, normalized_bubble);
 
         if (ret_value)
@@ -1412,16 +1408,16 @@ int hbdbus_subscribe_event (hbdbus_conn* conn,
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
     char* ret_value;
 
-    if (!hbdbus_is_valid_endpoint_name (endpoint))
+    if (!purc_is_valid_endpoint_name (endpoint))
         return HBDBUS_EC_INVALID_VALUE;
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    n = hbdbus_name_tolower_copy (endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
+    n = purc_name_tolower_copy (endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    hbdbus_name_toupper_copy (bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    purc_name_toupper_copy (bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
     if (kvlist_get (&conn->subscribed_list, event_name))
         return HBDBUS_EC_INVALID_VALUE;
 
@@ -1439,7 +1435,7 @@ int hbdbus_subscribe_event (hbdbus_conn* conn,
     else if ((size_t)n >= sizeof (param_buff))
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
-    hbdbus_assemble_endpoint_name (conn->srv_host_name,
+    purc_assemble_endpoint_name (conn->srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, builtin_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, builtin_name,
@@ -1448,7 +1444,7 @@ int hbdbus_subscribe_event (hbdbus_conn* conn,
         return err_code;
     }
 
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         kvlist_set (&conn->subscribed_list, event_name, &event_handler);
 
         if (ret_value)
@@ -1467,16 +1463,16 @@ int hbdbus_unsubscribe_event (hbdbus_conn* conn,
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
     char* ret_value;
 
-    if (!hbdbus_is_valid_endpoint_name (endpoint))
+    if (!purc_is_valid_endpoint_name (endpoint))
         return HBDBUS_EC_INVALID_VALUE;
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    n = hbdbus_name_tolower_copy (endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
+    n = purc_name_tolower_copy (endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    hbdbus_name_toupper_copy (bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    purc_name_toupper_copy (bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
     if (!kvlist_get (&conn->subscribed_list, event_name))
         return HBDBUS_EC_INVALID_VALUE;
 
@@ -1494,7 +1490,7 @@ int hbdbus_unsubscribe_event (hbdbus_conn* conn,
     else if ((size_t)n >= sizeof (param_buff))
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
-    hbdbus_assemble_endpoint_name (conn->srv_host_name,
+    purc_assemble_endpoint_name (conn->srv_host_name,
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, builtin_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, builtin_name,
@@ -1503,7 +1499,7 @@ int hbdbus_unsubscribe_event (hbdbus_conn* conn,
         return err_code;
     }
 
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         kvlist_delete (&conn->subscribed_list, event_name);
 
         if (ret_value)
@@ -1524,17 +1520,17 @@ int hbdbus_call_procedure (hbdbus_conn* conn,
     char buff [HBDBUS_DEF_PACKET_BUFF_SIZE];
     char* escaped_param;
 
-    if (!hbdbus_is_valid_endpoint_name (endpoint))
+    if (!purc_is_valid_endpoint_name (endpoint))
         return HBDBUS_EC_INVALID_VALUE;
 
     if (!hbdbus_is_valid_method_name (method_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    escaped_param = hbdbus_escape_string_for_json (method_param);
+    escaped_param = pcutils_escape_string_for_json (method_param);
     if (escaped_param == NULL)
         return HBDBUS_EC_NOMEM;
 
-    hbdbus_generate_unique_id (call_id_buf, "call");
+    purc_generate_unique_id (call_id_buf, "call");
 
     n = snprintf (buff, sizeof (buff), 
             "{"
@@ -1593,7 +1589,7 @@ int hbdbus_fire_event (hbdbus_conn* conn,
         return HBDBUS_EC_INVALID_VALUE;
     }
 
-    hbdbus_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
+    purc_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
     if (!kvlist_get (&conn->bubble_list, normalized_bubble)) {
         err_code = HBDBUS_EC_INVALID_VALUE;
         return HBDBUS_EC_INVALID_VALUE;
@@ -1609,7 +1605,7 @@ int hbdbus_fire_event (hbdbus_conn* conn,
     }
 
     if (bubble_data) {
-        escaped_data = hbdbus_escape_string_for_json (bubble_data);
+        escaped_data = pcutils_escape_string_for_json (bubble_data);
         if (escaped_data == NULL) {
             err_code = HBDBUS_EC_NOMEM;
             return HBDBUS_EC_NOMEM;
@@ -1618,7 +1614,7 @@ int hbdbus_fire_event (hbdbus_conn* conn,
     else
         escaped_data = NULL;
 
-    hbdbus_generate_unique_id (event_id, "event");
+    purc_generate_unique_id (event_id, "event");
     n = snprintf (packet_buff, sz_packet_buff, 
             "{"
             "\"packetType\": \"event\","
@@ -1648,9 +1644,9 @@ int hbdbus_fire_event (hbdbus_conn* conn,
     return err_code;
 }
 
-static int dispatch_call_packet (hbdbus_conn* conn, const hbdbus_json *jo)
+static int dispatch_call_packet (hbdbus_conn* conn, const purc_variant_t jo)
 {
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     const char* from_endpoint = NULL, *call_id=NULL, *result_id = NULL;
     const char* to_method;
     const char* parameter;
@@ -1665,47 +1661,47 @@ static int dispatch_call_packet (hbdbus_conn* conn, const hbdbus_json *jo)
     int n = 0, ret_code = 0;
     double time_consumed = 0.0f;
 
-    if (json_object_object_get_ex (jo, "fromEndpoint", &jo_tmp) &&
-            (from_endpoint = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "fromEndpoint")) &&
+            (from_endpoint = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         err_code = HBDBUS_EC_PROTOCOL;
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "toMethod", &jo_tmp) &&
-            (to_method = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "toMethod")) &&
+            (to_method = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         err_code = HBDBUS_EC_PROTOCOL;
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "callId", &jo_tmp) &&
-            (call_id = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "callId")) &&
+            (call_id = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         err_code = HBDBUS_EC_PROTOCOL;
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "resultId", &jo_tmp) &&
-            (result_id = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "resultId")) &&
+            (result_id = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         err_code = HBDBUS_EC_PROTOCOL;
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "parameter", &jo_tmp) &&
-            (parameter = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "parameter")) &&
+            (parameter = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         parameter = "";
     }
 
-    hbdbus_name_tolower_copy (to_method, normalized_name, HBDBUS_LEN_METHOD_NAME);
-    if ((data = kvlist_get (&conn->method_list, normalized_name)) == NULL) {
+    purc_name_tolower_copy(to_method, normalized_name, HBDBUS_LEN_METHOD_NAME);
+    if ((data = kvlist_get(&conn->method_list, normalized_name)) == NULL) {
         err_code = HBDBUS_EC_UNKNOWN_METHOD;
         goto done;
     }
@@ -1719,23 +1715,23 @@ static int dispatch_call_packet (hbdbus_conn* conn, const hbdbus_json *jo)
         clock_gettime (CLOCK_MONOTONIC, &ts);
         if (mhi.type == MHT_CONST_STRING) {
             hbdbus_method_handler_const method_handler = mhi.handler;
-            ret_value_const = method_handler (conn, from_endpoint,
+            ret_value_const = method_handler(conn, from_endpoint,
                     normalized_name, parameter, &err_code);
         }
         else {
             hbdbus_method_handler method_handler = mhi.handler;
-            ret_value = method_handler (conn, from_endpoint,
+            ret_value = method_handler(conn, from_endpoint,
                     normalized_name, parameter, &err_code);
             ret_value_const = ret_value;
         }
 
-        time_consumed = hbdbus_get_elapsed_seconds (&ts, NULL);
+        time_consumed = purc_get_elapsed_seconds (&ts, NULL);
 
         if (err_code == 0) {
             size_t len_value;
 
             if (ret_value_const) {
-                escaped_value = hbdbus_escape_string_for_json (ret_value_const);
+                escaped_value = pcutils_escape_string_for_json(ret_value_const);
                 if (escaped_value == NULL) {
                     err_code = HBDBUS_EC_NOMEM;
                     goto done;
@@ -1744,13 +1740,13 @@ static int dispatch_call_packet (hbdbus_conn* conn, const hbdbus_json *jo)
             else
                 escaped_value = NULL;
 
-            len_value = escaped_value ? (strlen (escaped_value) + 2) : 2;
+            len_value = escaped_value ? (strlen(escaped_value) + 2) : 2;
             if (len_value > HBDBUS_MIN_PACKET_BUFF_SIZE) {
                 sz_packet_buff = HBDBUS_MIN_PACKET_BUFF_SIZE + len_value;
-                packet_buff = malloc (HBDBUS_MIN_PACKET_BUFF_SIZE + len_value);
+                packet_buff = malloc(HBDBUS_MIN_PACKET_BUFF_SIZE + len_value);
                 if (packet_buff == NULL) {
                     packet_buff = buff_in_stack;
-                    sz_packet_buff = sizeof (buff_in_stack);
+                    sz_packet_buff = sizeof(buff_in_stack);
 
                     err_code = HBDBUS_EC_NOMEM;
                     goto done;
@@ -1761,10 +1757,10 @@ static int dispatch_call_packet (hbdbus_conn* conn, const hbdbus_json *jo)
 
 done:
     if (ret_value)
-        free (ret_value);
+        free(ret_value);
 
-    ret_code = hbdbus_errcode_to_retcode (err_code);
-    n = snprintf (packet_buff, sz_packet_buff, 
+    ret_code = hbdbus_errcode_to_retcode(err_code);
+    n = snprintf(packet_buff, sz_packet_buff, 
             "{"
             "\"packetType\": \"result\","
             "\"resultId\": \"%s\","
@@ -1779,10 +1775,10 @@ done:
             normalized_name,
             time_consumed,
             ret_code,
-            hbdbus_get_ret_message (ret_code),
+            pcrdr_get_ret_message (ret_code),
             escaped_value ? escaped_value : "");
     if (escaped_value)
-        free (escaped_value);
+        free(escaped_value);
 
     if (n < 0) {
         err_code = HBDBUS_EC_UNEXPECTED;
@@ -1791,18 +1787,18 @@ done:
         err_code = HBDBUS_EC_TOO_SMALL_BUFF;
     }
     else
-        hbdbus_send_text_packet (conn, packet_buff, n);
+        hbdbus_send_text_packet(conn, packet_buff, n);
 
     if (packet_buff && packet_buff != buff_in_stack) {
-        free (packet_buff);
+        free(packet_buff);
     }
 
     return err_code;
 }
 
-static int dispatch_result_packet (hbdbus_conn* conn, const hbdbus_json *jo)
+static int dispatch_result_packet(hbdbus_conn* conn, const purc_variant_t jo)
 {
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     const char* result_id = NULL, *call_id = NULL;
     const char* from_endpoint = NULL;
     const char* from_method = NULL;
@@ -1812,23 +1808,23 @@ static int dispatch_result_packet (hbdbus_conn* conn, const hbdbus_json *jo)
     int ret_code;
     double time_consumed;
 
-    if (json_object_object_get_ex (jo, "resultId", &jo_tmp) &&
-            (result_id = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "resultId")) &&
+            (result_id = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        ULOG_WARN ("No resultId\n");
+        LOG_WARN ("No resultId\n");
     }
 
-    if (json_object_object_get_ex (jo, "callId", &jo_tmp) &&
-            (call_id = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "callId")) &&
+            (call_id = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    data = kvlist_get (&conn->call_list, call_id);
+    data = kvlist_get(&conn->call_list, call_id);
     if (data == NULL) {
-        ULOG_ERR ("Not found result handler for callId: %s\n", call_id);
+        LOG_ERR ("Not found result handler for callId: %s\n", call_id);
         return HBDBUS_EC_INVALID_VALUE;
     }
 
@@ -1838,52 +1834,52 @@ static int dispatch_result_packet (hbdbus_conn* conn, const hbdbus_json *jo)
         return 0;
     }
 
-    if (json_object_object_get_ex (jo, "fromEndpoint", &jo_tmp) &&
-            (from_endpoint = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "fromEndpoint")) &&
+            (from_endpoint = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (json_object_object_get_ex (jo, "fromMethod", &jo_tmp) &&
-            (from_method = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "fromMethod")) &&
+            (from_method = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (json_object_object_get_ex (jo, "timeConsumed", &jo_tmp) &&
-            (time_consumed = json_object_get_double (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "timeConsumed")) &&
+            (purc_variant_cast_to_number(jo_tmp, &time_consumed, false))) {
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (json_object_object_get_ex (jo, "retCode", &jo_tmp) &&
-            (ret_code = json_object_get_int (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "retCode")) &&
+            purc_variant_cast_to_int32(jo_tmp, &ret_code, false)) {
         conn->last_ret_code = ret_code;
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (json_object_object_get_ex (jo, "retValue", &jo_tmp) &&
-            (ret_value = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "retValue")) &&
+            (ret_value = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (result_handler (conn, from_endpoint, from_method, call_id,
+    if (result_handler(conn, from_endpoint, from_method, call_id,
                 ret_code, ret_value) == 0)
         kvlist_delete (&conn->call_list, call_id);
 
     return 0;
 }
 
-static int dispatch_event_packet (hbdbus_conn* conn, const hbdbus_json *jo)
+static int dispatch_event_packet (hbdbus_conn* conn, const purc_variant_t jo)
 {
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     const char* from_endpoint = NULL;
     const char* from_bubble = NULL;
     const char* bubble_data;
@@ -1892,38 +1888,38 @@ static int dispatch_event_packet (hbdbus_conn* conn, const hbdbus_json *jo)
     int n;
     void *data;
 
-    if (json_object_object_get_ex (jo, "fromEndpoint", &jo_tmp) &&
-            (from_endpoint = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "fromEndpoint")) &&
+            (from_endpoint = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (json_object_object_get_ex (jo, "fromBubble", &jo_tmp) &&
-            (from_bubble = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "fromBubble")) &&
+            (from_bubble = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         return HBDBUS_EC_PROTOCOL;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleData", &jo_tmp) &&
-            (bubble_data = json_object_get_string (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "bubbleData")) &&
+            (bubble_data = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         bubble_data = "";
     }
 
-    n = hbdbus_name_tolower_copy (from_endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
-    event_name [n++] = '/';
-    event_name [n] = '\0';
-    hbdbus_name_toupper_copy (from_bubble, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
-    if ((data = kvlist_get (&conn->subscribed_list, event_name)) == NULL) {
+    n = purc_name_tolower_copy(from_endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
+    event_name[n++] = '/';
+    event_name[n] = '\0';
+    purc_name_toupper_copy(from_bubble, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    if ((data = kvlist_get(&conn->subscribed_list, event_name)) == NULL) {
         fprintf (stderr, "Got a unsubscribed event: %s\n", event_name);
         return HBDBUS_EC_UNKNOWN_EVENT;
     }
     else {
         event_handler = *(hbdbus_event_handler *)data;
-        event_handler (conn, from_endpoint, from_bubble, bubble_data);
+        event_handler(conn, from_endpoint, from_bubble, bubble_data);
     }
 
     return 0;
@@ -1937,36 +1933,36 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
     int retval;
     char *packet;
     unsigned int data_len;
-    hbdbus_json* jo = NULL;
+    purc_variant_t jo = NULL;
     time_t time_to_return;
     int err_code = 0;
 
     *ret_value = NULL;
 
     if (time_expected <= 0) {
-        time_to_return = hbdbus_get_monotoic_time () + HBDBUS_DEF_TIME_EXPECTED;
+        time_to_return = purc_get_monotoic_time () + HBDBUS_DEF_TIME_EXPECTED;
     }
     else {
-        time_to_return = hbdbus_get_monotoic_time () + time_expected;
+        time_to_return = purc_get_monotoic_time () + time_expected;
     }
 
-    while (1 /* hbdbus_get_monotoic_time () < time_to_return */) {
+    while (1 /* purc_get_monotoic_time () < time_to_return */) {
         FD_ZERO (&rfds);
         FD_SET (conn->fd, &rfds);
 
-        tv.tv_sec = time_to_return - hbdbus_get_monotoic_time ();
+        tv.tv_sec = time_to_return - purc_get_monotoic_time ();
         tv.tv_usec = 0;
         retval = select (conn->fd + 1, &rfds, NULL, NULL, &tv);
 
         if (retval == -1) {
-            ULOG_ERR ("Failed to call select(): %s\n", strerror (errno));
+            LOG_ERR ("Failed to call select(): %s\n", strerror (errno));
             err_code = HBDBUS_EC_BAD_SYSTEM_CALL;
         }
         else if (retval) {
             err_code = hbdbus_read_packet_alloc (conn, &packet, &data_len);
 
             if (err_code) {
-                ULOG_ERR ("Failed to read packet\n");
+                LOG_ERR ("Failed to read packet\n");
                 break;
             }
 
@@ -1977,27 +1973,27 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
             free (packet);
 
             if (retval < 0) {
-                ULOG_ERR ("Failed to parse JSON packet;\n");
+                LOG_ERR ("Failed to parse JSON packet;\n");
                 err_code = HBDBUS_EC_BAD_PACKET;
             }
             else if (retval == JPT_RESULT) {
-                hbdbus_json *jo_tmp;
+                purc_variant_t jo_tmp;
                 const char* str_tmp;
-                if (json_object_object_get_ex (jo, "callId", &jo_tmp) &&
-                        (str_tmp = json_object_get_string (jo_tmp)) &&
-                        strcasecmp (str_tmp, call_id) == 0) {
+                if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "callId")) &&
+                        (str_tmp = purc_variant_get_string_const(jo_tmp)) &&
+                        strcasecmp(str_tmp, call_id) == 0) {
 
-                    if (json_object_object_get_ex (jo, "retCode", &jo_tmp)) {
-                        *ret_code = json_object_get_int (jo_tmp);
+                    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "retCode"))) {
+                        purc_variant_cast_to_int32(jo_tmp, ret_code, true);
                     }
                     else {
-                        *ret_code = HBDBUS_SC_INTERNAL_SERVER_ERROR;
+                        *ret_code = PCRDR_SC_INTERNAL_SERVER_ERROR;
                     }
                     conn->last_ret_code = *ret_code;
 
-                    if (*ret_code == HBDBUS_SC_OK) {
-                        if (json_object_object_get_ex (jo, "retValue", &jo_tmp)) {
-                            str_tmp = json_object_get_string (jo_tmp);
+                    if (*ret_code == PCRDR_SC_OK) {
+                        if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "retValue"))) {
+                            str_tmp = purc_variant_get_string_const(jo_tmp);
                             if (str_tmp) {
                                 *ret_value = strdup (str_tmp);
                             }
@@ -2008,12 +2004,12 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
                             *ret_value = NULL;
                         }
 
-                        json_object_put (jo);
+                        purc_variant_unref(jo);
                         jo = NULL;
                         err_code = 0;
                         break;
                     }
-                    else if (*ret_code == HBDBUS_SC_ACCEPTED) {
+                    else if (*ret_code == PCRDR_SC_ACCEPTED) {
                         // wait for ok
                         err_code = 0;
                     }
@@ -2023,27 +2019,27 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
                 }
             }
             else if (retval == JPT_ERROR) {
-                hbdbus_json *jo_tmp;
+                purc_variant_t jo_tmp;
 
-                if (json_object_object_get_ex (jo, "retCode", &jo_tmp)) {
-                    *ret_code = json_object_get_int (jo_tmp);
+                if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "retCode"))) {
+                    purc_variant_cast_to_int32(jo_tmp, ret_code, true);
                 }
                 else {
-                    *ret_code = HBDBUS_SC_INTERNAL_SERVER_ERROR;
+                    *ret_code = PCRDR_SC_INTERNAL_SERVER_ERROR;
                 }
 
                 conn->last_ret_code = *ret_code;
                 err_code = HBDBUS_EC_SERVER_ERROR;
 
-                if (json_object_object_get_ex (jo, "causedBy", &jo_tmp) &&
-                        strcasecmp (json_object_get_string (jo_tmp), "call") == 0 &&
-                        json_object_object_get_ex (jo, "causedId", &jo_tmp) &&
-                        strcasecmp (json_object_get_string (jo_tmp), call_id) == 0) {
+                if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "causedBy")) &&
+                        strcasecmp (purc_variant_get_string_const(jo_tmp), "call") == 0 &&
+                        (jo_tmp = purc_variant_object_get_by_ckey(jo, "causedId")) &&
+                        strcasecmp (purc_variant_get_string_const(jo_tmp), call_id) == 0) {
                     break;
                 }
             }
             else if (retval == JPT_AUTH) {
-                ULOG_WARN ("Should not be here for packetType `auth`\n");
+                LOG_WARN ("Should not be here for packetType `auth`\n");
                 err_code = 0;
             }
             else if (retval == JPT_CALL) {
@@ -2059,19 +2055,19 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
                 err_code = 0;
             }
             else if (retval == JPT_AUTH_PASSED) {
-                ULOG_WARN ("Unexpected authPassed packet\n");
+                LOG_WARN ("Unexpected authPassed packet\n");
                 err_code = HBDBUS_EC_UNEXPECTED;
             }
             else if (retval == JPT_AUTH_FAILED) {
-                ULOG_WARN ("Unexpected authFailed packet\n");
+                LOG_WARN ("Unexpected authFailed packet\n");
                 err_code = HBDBUS_EC_UNEXPECTED;
             }
             else {
-                ULOG_ERR ("Unknown packet type; quit...\n");
+                LOG_ERR ("Unknown packet type; quit...\n");
                 err_code = HBDBUS_EC_PROTOCOL;
             }
 
-            json_object_put (jo);
+            purc_variant_unref(jo);
             jo = NULL;
         }
         else {
@@ -2081,7 +2077,7 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
     }
 
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref(jo);
 
     return err_code;
 }
@@ -2090,12 +2086,12 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
 {
     char *packet;
     unsigned int data_len;
-    hbdbus_json* jo = NULL;
+    purc_variant_t jo = NULL;
     int err_code, retval;
 
     err_code = hbdbus_read_packet_alloc (conn, &packet, &data_len);
     if (err_code) {
-        ULOG_ERR ("Failed to read packet\n");
+        LOG_ERR ("Failed to read packet\n");
         goto done;
     }
 
@@ -2107,18 +2103,18 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
     free (packet);
 
     if (retval < 0) {
-        ULOG_ERR ("Failed to parse JSON packet; quit...\n");
+        LOG_ERR ("Failed to parse JSON packet; quit...\n");
         err_code = HBDBUS_EC_BAD_PACKET;
     }
     else if (retval == JPT_ERROR) {
-        ULOG_ERR ("The server gives an error packet\n");
+        LOG_ERR ("The server gives an error packet\n");
         if (conn->error_handler) {
             conn->error_handler (conn, jo);
         }
         err_code = HBDBUS_EC_SERVER_ERROR;
     }
     else if (retval == JPT_AUTH) {
-        ULOG_WARN ("Should not be here for packetType `auth`; quit...\n");
+        LOG_WARN ("Should not be here for packetType `auth`; quit...\n");
         err_code = HBDBUS_EC_UNEXPECTED;
     }
     else if (retval == JPT_CALL) {
@@ -2137,21 +2133,21 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
         err_code = 0;
     }
     else if (retval == JPT_AUTH_PASSED) {
-        ULOG_WARN ("Unexpected authPassed packet\n");
+        LOG_WARN ("Unexpected authPassed packet\n");
         err_code = HBDBUS_EC_UNEXPECTED;
     }
     else if (retval == JPT_AUTH_FAILED) {
-        ULOG_WARN ("Unexpected authFailed packet\n");
+        LOG_WARN ("Unexpected authFailed packet\n");
         err_code = HBDBUS_EC_UNEXPECTED;
     }
     else {
-        ULOG_ERR ("Unknown packet type; quit...\n");
+        LOG_ERR ("Unknown packet type; quit...\n");
         err_code = HBDBUS_EC_PROTOCOL;
     }
 
 done:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref(jo);
 
     return err_code;
 }

@@ -27,7 +27,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <hibox/list.h>
+#include "internal/list.h"
 
 typedef enum USSTATUS {
     US_OK = 0,

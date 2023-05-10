@@ -35,7 +35,7 @@
 #include <limits.h>
 #include <sys/select.h>
 
-#if HAVE_LIBSSL
+#if HAVE(OPENSSL)
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -229,7 +229,7 @@ typedef struct WSClient_
   struct timeval start_proc;
   struct timeval end_proc;
 
-#ifdef HAVE_LIBSSL
+#if HAVE(OPENSSL)
   SSL *ssl;
   WSStatus sslstatus;           /* ssl connection status */
 #endif
@@ -252,7 +252,7 @@ typedef struct WSServer_
   int (*on_close) (void *server, struct SockClient_ * client);
   void (*on_error) (void *server, struct SockClient_* client, int err_code);
 
-#ifdef HAVE_LIBSSL
+#if HAVE(OPENSSL)
   SSL_CTX *ctx;
 #endif
 

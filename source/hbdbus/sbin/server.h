@@ -23,9 +23,8 @@
 #ifndef _HBDBUS_SERVER_H_
 #define _HBDBUS_SERVER_H_
 
-#include <hibox/list.h>
-#include <hibox/gslist.h>
-#include <hibox/kvlist.h>
+#include "internal/list.h"
+#include "internal/kvlist.h"
 
 #include "hbdbus.h"
 

@@ -78,12 +78,12 @@ bool init_pattern_list (pattern_list *pl, const char* pattern)
             one_pattern->var_name = NULL;
         }
         else if (*token == '$') {
-            if (hbdbus_is_valid_token (token + 1, HBDBUS_LEN_APP_NAME)) {
+            if (purc_is_valid_token (token + 1, HBDBUS_LEN_APP_NAME)) {
                 one_pattern->type = PT_VARIABLE;
                 one_pattern->var_name = strdup (token + 1);
             }
             else {
-                ULOG_WARN ("Got a bad variable pattern: %s\n", token + 1);
+                LOG_WARN ("Got a bad variable pattern: %s\n", token + 1);
                 free (one_pattern);
                 continue;
             }
@@ -92,7 +92,7 @@ bool init_pattern_list (pattern_list *pl, const char* pattern)
             one_pattern->type = PT_NOT_SPEC;
             one_pattern->not_spec = g_pattern_spec_new (token + 1);
             if (one_pattern->not_spec == NULL) {
-                ULOG_WARN ("Failed to create a new spec for pattern: %s\n", token + 1);
+                LOG_WARN ("Failed to create a new spec for pattern: %s\n", token + 1);
                 free (one_pattern);
                 continue;
             }
@@ -102,7 +102,7 @@ bool init_pattern_list (pattern_list *pl, const char* pattern)
             one_pattern->type = PT_SPEC;
             one_pattern->spec = g_pattern_spec_new (token);
             if (one_pattern->spec == NULL) {
-                ULOG_WARN ("Failed to create a new not-spec for pattern: %s\n", token + 1);
+                LOG_WARN ("Failed to create a new not-spec for pattern: %s\n", token + 1);
                 free (one_pattern);
                 continue;
             }
@@ -228,7 +228,7 @@ bool match_pattern (pattern_list *pl, const char* string,
                     goto success;
                 }
                 else {
-                    ULOG_WARN ("Not found the real value for variable: %s",
+                    LOG_WARN ("Not found the real value for variable: %s",
                             pattern->var_name);
                 }
                 break;

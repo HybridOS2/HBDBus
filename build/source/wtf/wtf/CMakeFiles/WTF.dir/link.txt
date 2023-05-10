@@ -1,2 +1,0 @@
-/usr/bin/ar crT libWTF.a CMakeFiles/WTF.dir/nothing.c.o
-/usr/bin/ranlib libWTF.a

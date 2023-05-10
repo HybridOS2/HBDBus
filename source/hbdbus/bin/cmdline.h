@@ -52,7 +52,7 @@ struct run_info {
     char builtin_endpoint [HBDBUS_LEN_ENDPOINT_NAME + 1];
     char self_endpoint [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
-    hbdbus_json *jo_endpoints;
+    purc_variant_t jo_endpoints;
     struct kvlist ret_value_list;
 
 #if 0

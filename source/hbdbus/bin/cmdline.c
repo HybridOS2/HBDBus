@@ -219,9 +219,9 @@ static void handle_signal_action (int sig_number)
         if (the_client.last_sigint_time == 0) {
             fprintf (stderr, "\n");
             fprintf (stderr, "SIGINT caught, press <CTRL+C> again in 5 seconds to quit.\n");
-            the_client.last_sigint_time = hbdbus_get_monotoic_time ();
+            the_client.last_sigint_time = purc_get_monotoic_time ();
         }
-        else if (hbdbus_get_monotoic_time () < the_client.last_sigint_time + 5) {
+        else if (purc_get_monotoic_time () < the_client.last_sigint_time + 5) {
             fprintf (stderr, "SIGINT caught, quit...\n");
             the_client.running = false;
         }
@@ -229,7 +229,7 @@ static void handle_signal_action (int sig_number)
             fprintf (stderr, "\n");
             fprintf (stderr, "SIGINT caught, press <CTRL+C> again in 5 seconds to quit.\n");
             the_client.running = true;
-            the_client.last_sigint_time = hbdbus_get_monotoic_time ();
+            the_client.last_sigint_time = purc_get_monotoic_time ();
         }
     }
     else if (sig_number == SIGPIPE) {
@@ -428,7 +428,7 @@ static void on_cmd_call (hbdbus_conn *conn,
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
             fprintf (stderr, "Server returned message: %s (%d)\n",
-                    hbdbus_get_ret_message (ret_code), ret_code);
+                    pcrdr_get_ret_message (ret_code), ret_code);
         }
     }
     else {
@@ -448,7 +448,7 @@ static const char* my_method_handler (hbdbus_conn* conn,
     void* data;
     char* value;
 
-    hbdbus_name_tolower_copy (to_method, normalized_name, HBDBUS_LEN_METHOD_NAME);
+    purc_name_tolower_copy (to_method, normalized_name, HBDBUS_LEN_METHOD_NAME);
     if ((data = kvlist_get (&info->ret_value_list, normalized_name)) == NULL) {
         return "NULL";
     }
@@ -473,7 +473,7 @@ static void on_cmd_register_method (hbdbus_conn *conn,
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
 
             fprintf (stderr, "Server returned message: %s (%d)\n",
-                    hbdbus_get_ret_message (ret_code), ret_code);
+                    pcrdr_get_ret_message (ret_code), ret_code);
         }
     }
     else {
@@ -496,7 +496,7 @@ static void on_cmd_revoke_method (hbdbus_conn *conn,
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
 
             fprintf (stderr, "Server returned message: %s (%d)\n",
-                    hbdbus_get_ret_message (ret_code), ret_code);
+                    pcrdr_get_ret_message (ret_code), ret_code);
         }
     }
     else {
@@ -516,7 +516,7 @@ static void on_cmd_set_return_value (hbdbus_conn *conn,
         return;
     }
 
-    hbdbus_name_tolower_copy (method, normalized_name, HBDBUS_LEN_METHOD_NAME);
+    purc_name_tolower_copy (method, normalized_name, HBDBUS_LEN_METHOD_NAME);
     value = strdup (ret_value);
     if (kvlist_set (&info->ret_value_list, normalized_name, &value)) {
         fprintf (stderr, "Value store for method: %s\n", normalized_name);
@@ -541,7 +541,7 @@ static void on_cmd_register_event (hbdbus_conn *conn,
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
 
             fprintf (stderr, "Server returned message: %s (%d)\n",
-                    hbdbus_get_ret_message (ret_code), ret_code);
+                    pcrdr_get_ret_message (ret_code), ret_code);
         }
     }
     else {
@@ -564,7 +564,7 @@ static void on_cmd_revoke_event (hbdbus_conn *conn,
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
 
             fprintf (stderr, "Server returned message: %s (%d)\n",
-                    hbdbus_get_ret_message (ret_code), ret_code);
+                    pcrdr_get_ret_message (ret_code), ret_code);
         }
     }
     else {
@@ -586,7 +586,7 @@ static void on_cmd_fire (hbdbus_conn *conn,
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
             fprintf (stderr, "Server returned message: %s (%d)\n",
-                    hbdbus_get_ret_message (ret_code), ret_code);
+                    pcrdr_get_ret_message (ret_code), ret_code);
         }
     }
     else {
@@ -644,7 +644,7 @@ static int on_result_list_procedures (hbdbus_conn* conn,
         const char* from_endpoint, const char* from_method,
         const char* call_id, int ret_code, const char* ret_value)
 {
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         struct run_info *info = hbdbus_conn_get_user_data (conn);
         bool first_time = true;
 
@@ -668,7 +668,7 @@ static int on_result_list_procedures (hbdbus_conn* conn,
 
         return 0;
     }
-    else if (ret_code == HBDBUS_SC_ACCEPTED) {
+    else if (ret_code == PCRDR_SC_ACCEPTED) {
         ULOG_WARN ("The server accepted the call\n");
     }
     else {
@@ -733,10 +733,10 @@ static void on_cmd_list_procedures (hbdbus_conn *conn,
 
     if (err_code) {
         fprintf (stderr, "Failed to call listProcedures on endpoint %s: %s\n",
-                endpoint, hbdbus_get_ret_message (ret_code));
+                endpoint, pcrdr_get_ret_message (ret_code));
     }
     else {
-        hbdbus_json *jo;
+        purc_variant_t jo;
 
         fprintf (stderr, "Procedures can be called by %s:\n", endpoint);
 
@@ -772,10 +772,10 @@ static void on_cmd_list_events (hbdbus_conn *conn,
 
     if (err_code) {
         fprintf (stderr, "Failed to call listEvents for endpoint %s: %s\n",
-                endpoint, hbdbus_get_ret_message (ret_code));
+                endpoint, pcrdr_get_ret_message (ret_code));
     }
     else {
-        hbdbus_json *jo;
+        purc_variant_t jo;
 
         fprintf (stderr, "Events can be subscribed by %s:\n", endpoint);
 
@@ -825,10 +825,10 @@ static void on_cmd_list_subscribers (hbdbus_conn *conn,
 
     if (err_code) {
         fprintf (stderr, "Failed to call listEventSubscribers for endpoint bubble %s/%s: %s\n",
-                endpoint, bubble, hbdbus_get_ret_message (ret_code));
+                endpoint, bubble, pcrdr_get_ret_message (ret_code));
     }
     else {
-        hbdbus_json *jo;
+        purc_variant_t jo;
 
         fprintf (stderr, "Subscribers of %s/%s:\n", endpoint, bubble);
 
@@ -1036,7 +1036,7 @@ static void on_confirm_command (hbdbus_conn *conn)
                 break;
 
             case AT_ENDPOINT:
-                if (!hbdbus_is_valid_endpoint_name (args [i]))
+                if (!purc_is_valid_endpoint_name (args [i]))
                     goto bad_cmd_line;
                 break;
 
@@ -1051,7 +1051,7 @@ static void on_confirm_command (hbdbus_conn *conn)
                 break;
 
             case AT_GAME:
-                if (!hbdbus_is_valid_token (args [i], LEN_GAME_NAME))
+                if (!purc_is_valid_token (args [i], LEN_GAME_NAME))
                     goto bad_cmd_line;
                 break;
 
@@ -1359,11 +1359,11 @@ static int my_echo_result (hbdbus_conn* conn,
         const char* call_id,
         int ret_code, const char* ret_value)
 {
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         ULOG_INFO ("Got the result: %s\n", ret_value);
         return 0;
     }
-    else if (ret_code == HBDBUS_SC_ACCEPTED) {
+    else if (ret_code == PCRDR_SC_ACCEPTED) {
         ULOG_WARN ("The server accepted the call\n");
     }
     else {
@@ -1384,7 +1384,7 @@ static void format_current_time (char* buff, size_t sz)
 
 static int test_basic_functions (hbdbus_conn *conn)
 {
-    hbdbus_json *jo;
+    purc_variant_t jo;
 
     int err_code, ret_code;
     char *ret_value;
@@ -1456,7 +1456,7 @@ static int test_basic_functions (hbdbus_conn *conn)
     if (err_code == HBDBUS_EC_SERVER_ERROR) {
         int ret_code = hbdbus_conn_get_last_ret_code (conn);
         ULOG_INFO ("last return code: %d (%s)\n",
-                ret_code, hbdbus_get_ret_message (ret_code));
+                ret_code, pcrdr_get_ret_message (ret_code));
     }
 
     return err_code;
@@ -1466,7 +1466,7 @@ static void on_new_broken_endpoint (hbdbus_conn* conn,
         const char* from_endpoint, const char* from_bubble,
         const char* bubble_data)
 {
-    hbdbus_json *jo = hbdbus_json_object_from_string (bubble_data,
+    purc_variant_t jo = hbdbus_json_object_from_string (bubble_data,
             strlen (bubble_data), 2);
     if (jo == NULL) {
         ULOG_ERR ("Failed to parse bubbleData:\n%s\n", bubble_data);
@@ -1568,12 +1568,12 @@ int main (int argc, char **argv)
     }
 
     if (!the_client.app_name[0] ||
-            !hbdbus_is_valid_app_name (the_client.app_name)) {
+            !purc_is_valid_app_name (the_client.app_name)) {
         strcpy (the_client.app_name, HBDBUS_APP_HBDBUS);
     }
 
     if (!the_client.runner_name[0] ||
-            !hbdbus_is_valid_runner_name (the_client.runner_name)) {
+            !purc_is_valid_runner_name (the_client.runner_name)) {
         strcpy (the_client.runner_name, HBDBUS_RUNNER_CMDLINE);
     }
 
@@ -1597,12 +1597,12 @@ int main (int argc, char **argv)
         goto failed;
     }
 
-    hbdbus_assemble_endpoint_name (
+    purc_assemble_endpoint_name (
             hbdbus_conn_srv_host_name (conn),
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN,
             the_client.builtin_endpoint);
 
-    hbdbus_assemble_endpoint_name (
+    purc_assemble_endpoint_name (
             hbdbus_conn_own_host_name (conn),
             the_client.app_name, the_client.runner_name,
             the_client.self_endpoint);
@@ -1701,7 +1701,7 @@ int main (int argc, char **argv)
             }
         }
 
-        if (hbdbus_get_monotoic_time () > the_client.last_sigint_time + 5) {
+        if (purc_get_monotoic_time () > the_client.last_sigint_time + 5) {
             // cancel quit
             the_client.last_sigint_time = 0;
         }

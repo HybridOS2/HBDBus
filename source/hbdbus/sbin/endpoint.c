@@ -70,14 +70,14 @@ BusEndpoint* new_endpoint (BusServer* bus_srv, int type, void* client)
             endpoint->app_name = NULL;
             endpoint->runner_name = NULL;
             if (!store_dangling_endpoint (bus_srv, endpoint)) {
-                ULOG_ERR ("Failed to store dangling endpoint\n");
+                LOG_ERR ("Failed to store dangling endpoint\n");
                 free (endpoint);
                 return NULL;
             }
             break;
 
         default:
-            ULOG_ERR ("Bad endpoint type\n");
+            LOG_ERR ("Bad endpoint type\n");
             free (endpoint);
             return NULL;
     }
@@ -105,7 +105,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
     void *next, *data;
 
     if (assemble_endpoint_name (endpoint, endpoint_name) > 0) {
-        ULOG_INFO ("Deleting an endpoint: %s (%p)\n", endpoint_name, endpoint);
+        LOG_INFO ("Deleting an endpoint: %s (%p)\n", endpoint_name, endpoint);
         if (cause == CDE_LOST_CONNECTION || cause == CDE_NO_RESPONDING) {
             fire_system_event (bus_srv, SBT_BROKEN_ENDPOINT, endpoint, NULL,
                     (cause == CDE_LOST_CONNECTION) ? "lostConnection" : "noResponding");
@@ -122,7 +122,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
         MethodInfo* method;
 
         method = *(MethodInfo **)data;
-        ULOG_INFO ("Revoke procedure: @%s/%s/%s/%s (%p)\n",
+        LOG_INFO ("Revoke procedure: @%s/%s/%s/%s (%p)\n",
                 endpoint->host_name, endpoint->app_name, endpoint->runner_name,
                 method_name, method);
         cleanup_pattern_list (&method->host_patt_list);
@@ -137,7 +137,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
         BubbleInfo* bubble;
 
         bubble = *(BubbleInfo **)data;
-        ULOG_INFO ("Revoke event: @%s/%s/%s/%s (%p)\n",
+        LOG_INFO ("Revoke event: @%s/%s/%s/%s (%p)\n",
                 endpoint->host_name, endpoint->app_name, endpoint->runner_name,
                 bubble_name, bubble);
         cleanup_pattern_list (&bubble->host_patt_list);
@@ -152,7 +152,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
                     BusEndpoint* subscriber;
                     subscriber = *(BusEndpoint **)sub_sub_data;
 
-                    ULOG_INFO ("notify subscirber: %s\n", sub_name);
+                    LOG_INFO ("notify subscirber: %s\n", sub_name);
                     if (subscriber != endpoint) {
                         fire_system_event (bus_srv, SBT_LOST_EVENT_GENERATOR,
                                 endpoint, subscriber, bubble_name);
@@ -202,7 +202,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
     if (endpoint->runner_name) free (endpoint->runner_name);
 
     free (endpoint);
-    ULOG_WARN ("Endpoint (%s) removed\n", endpoint_name);
+    LOG_WARN ("Endpoint (%s) removed\n", endpoint_name);
     return 0;
 }
 
@@ -241,21 +241,21 @@ bool make_endpoint_ready (BusServer* bus_srv,
 {
     if (remove_dangling_endpoint (bus_srv, endpoint)) {
         if (!kvlist_set (&bus_srv->endpoint_list, endpoint_name, &endpoint)) {
-            ULOG_ERR ("Failed to store the endpoint: %s\n", endpoint_name);
+            LOG_ERR ("Failed to store the endpoint: %s\n", endpoint_name);
             return false;
         }
 
-        endpoint->t_living = hbdbus_get_monotoic_time ();
+        endpoint->t_living = purc_get_monotoic_time ();
         endpoint->avl.key = endpoint;
         if (avl_insert (&bus_srv->living_avl, &endpoint->avl)) {
-            ULOG_ERR ("Failed to insert to the living AVL tree: %s\n", endpoint_name);
+            LOG_ERR ("Failed to insert to the living AVL tree: %s\n", endpoint_name);
             assert (0);
             return false;
         }
         bus_srv->nr_endpoints++;
     }
     else {
-        ULOG_ERR ("Not found endpoint in dangling list: %s\n", endpoint_name);
+        LOG_ERR ("Not found endpoint in dangling list: %s\n", endpoint_name);
         return false;
     }
 
@@ -273,7 +273,7 @@ static void cleanup_endpoint_client (BusServer *bus_srv, BusEndpoint* endpoint)
         ws_cleanup_client (bus_srv->ws_srv, (WSClient*)endpoint->entity.client);
     }
 
-    ULOG_WARN ("The endpoint (@%s/%s/%s) client cleaned up\n",
+    LOG_WARN ("The endpoint (@%s/%s/%s) client cleaned up\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name);
 }
 
@@ -300,10 +300,10 @@ int check_no_responding_endpoints (BusServer *bus_srv)
     }
 #endif
 
-    time_t t_curr = hbdbus_get_monotoic_time ();
+    time_t t_curr = purc_get_monotoic_time ();
 	BusEndpoint *endpoint, *tmp;
 
-    ULOG_INFO ("Checking no responding endpoints...\n");
+    LOG_INFO ("Checking no responding endpoints...\n");
 
 	avl_for_each_element_safe (&bus_srv->living_avl, endpoint, avl, tmp) {
         char name [HBDBUS_LEN_ENDPOINT_NAME + 1];
@@ -319,7 +319,7 @@ int check_no_responding_endpoints (BusServer *bus_srv)
             bus_srv->nr_endpoints--;
             n++;
 
-            ULOG_INFO ("A no-responding client: %s\n", name);
+            LOG_INFO ("A no-responding client: %s\n", name);
         }
         else if (t_curr > endpoint->t_living + HBDBUS_MAX_PING_TIME) {
             if (endpoint->type == ET_UNIX_SOCKET) {
@@ -329,22 +329,22 @@ int check_no_responding_endpoints (BusServer *bus_srv)
                 ws_ping_client (bus_srv->ws_srv, (WSClient *)endpoint->entity.client);
             }
 
-            ULOG_INFO ("Ping client: %s\n", name);
+            LOG_INFO ("Ping client: %s\n", name);
         }
         else {
-            ULOG_INFO ("Skip left endpoints since (%s): %ld\n", name, endpoint->t_living);
+            LOG_INFO ("Skip left endpoints since (%s): %ld\n", name, endpoint->t_living);
             break;
         }
 	}
 
-    ULOG_INFO ("Total endpoints removed: %d\n", n);
+    LOG_INFO ("Total endpoints removed: %d\n", n);
     return n;
 }
 
 int check_dangling_endpoints (BusServer *bus_srv)
 {
     int n = 0;
-    time_t t_curr = hbdbus_get_monotoic_time ();
+    time_t t_curr = purc_get_monotoic_time ();
     gs_list* node = bus_srv->dangling_endpoints;
 
     while (node) {
@@ -388,7 +388,7 @@ int send_challenge_code (BusServer* bus_srv, BusEndpoint* endpoint)
     char buff [HBDBUS_DEF_PACKET_BUFF_SIZE];
 
     if ((endpoint->sta_data = malloc (SHA256_DIGEST_SIZE * 2 + 1)) == NULL) {
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
     }
     ch_code = endpoint->sta_data;
 
@@ -400,7 +400,7 @@ int send_challenge_code (BusServer* bus_srv, BusEndpoint* endpoint)
     bin2hex (ch_code_bin, SHA256_DIGEST_SIZE, ch_code);
     ch_code [SHA256_DIGEST_SIZE * 2] = 0;
 
-    ULOG_INFO ("Challenge code for new endpoint: %s\n", ch_code);
+    LOG_INFO ("Challenge code for new endpoint: %s\n", ch_code);
 
     n = snprintf (buff, sizeof (buff), 
             "{"
@@ -413,8 +413,8 @@ int send_challenge_code (BusServer* bus_srv, BusEndpoint* endpoint)
             ch_code);
 
     if (n < 0 || (size_t)n >= sizeof (buff)) {
-        ULOG_ERR ("The size of buffer for packet is too small.\n");
-        retv = HBDBUS_SC_INTERNAL_SERVER_ERROR;
+        LOG_ERR ("The size of buffer for packet is too small.\n");
+        retv = PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
     else
         retv = send_packet_to_endpoint (bus_srv, endpoint, buff, n);
@@ -423,16 +423,16 @@ int send_challenge_code (BusServer* bus_srv, BusEndpoint* endpoint)
         endpoint->status = ES_CLOSING;
         free (endpoint->sta_data);
         endpoint->sta_data = NULL;
-        return HBDBUS_SC_IOERR;
+        return PCRDR_SC_IOERR;
     }
 
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
-        const hbdbus_json *jo)
+        const purc_variant_t jo)
 {
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     const char* prot_name = NULL;
     const char *host_name = NULL, *app_name = NULL, *runner_name = NULL;
     const char *encoded_sig = NULL, *encoding = NULL;
@@ -445,7 +445,7 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     char endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
     if (json_object_object_get_ex (jo, "protocolName", &jo_tmp)) {
-        prot_name = json_object_get_string (jo_tmp);
+        prot_name = purc_variant_get_string_const (jo_tmp);
     }
 
     if (json_object_object_get_ex (jo, "protocolVersion", &jo_tmp)) {
@@ -453,42 +453,42 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     }
 
     if (json_object_object_get_ex (jo, "hostName", &jo_tmp)) {
-        host_name = json_object_get_string (jo_tmp);
+        host_name = purc_variant_get_string_const (jo_tmp);
     }
     if (json_object_object_get_ex (jo, "appName", &jo_tmp)) {
-        app_name = json_object_get_string (jo_tmp);
+        app_name = purc_variant_get_string_const (jo_tmp);
     }
     if (json_object_object_get_ex (jo, "runnerName", &jo_tmp)) {
-        runner_name = json_object_get_string (jo_tmp);
+        runner_name = purc_variant_get_string_const (jo_tmp);
     }
     if (json_object_object_get_ex (jo, "signature", &jo_tmp)) {
-        encoded_sig = json_object_get_string (jo_tmp);
+        encoded_sig = purc_variant_get_string_const (jo_tmp);
     }
     if (json_object_object_get_ex (jo, "encodedIn", &jo_tmp)) {
-        encoding = json_object_get_string (jo_tmp);
+        encoding = purc_variant_get_string_const (jo_tmp);
     }
 
     if (prot_name == NULL || prot_ver > HBDBUS_PROTOCOL_VERSION ||
             host_name == NULL || app_name == NULL || runner_name == NULL ||
             encoded_sig == NULL || encoding == NULL ||
             strcasecmp (prot_name, HBDBUS_PROTOCOL_NAME)) {
-        ULOG_WARN ("Bad packet data for authentication\n");
-        return HBDBUS_SC_BAD_REQUEST;
+        LOG_WARN ("Bad packet data for authentication\n");
+        return PCRDR_SC_BAD_REQUEST;
     }
 
     if (prot_ver < HBDBUS_MINIMAL_PROTOCOL_VERSION)
-        return HBDBUS_SC_UPGRADE_REQUIRED;
+        return PCRDR_SC_UPGRADE_REQUIRED;
 
-    if (!hbdbus_is_valid_host_name (host_name) ||
-            !hbdbus_is_valid_app_name (app_name) ||
-            !hbdbus_is_valid_token (runner_name, HBDBUS_LEN_RUNNER_NAME)) {
-        ULOG_WARN ("Bad endpoint name: @%s/%s/%s\n", host_name, app_name, runner_name);
-        return HBDBUS_SC_NOT_ACCEPTABLE;
+    if (!purc_is_valid_host_name (host_name) ||
+            !purc_is_valid_app_name (app_name) ||
+            !purc_is_valid_token (runner_name, HBDBUS_LEN_RUNNER_NAME)) {
+        LOG_WARN ("Bad endpoint name: @%s/%s/%s\n", host_name, app_name, runner_name);
+        return PCRDR_SC_NOT_ACCEPTABLE;
     }
 
-    hbdbus_name_tolower_copy (host_name, norm_host_name, HBDBUS_LEN_HOST_NAME);
-    hbdbus_name_tolower_copy (app_name, norm_app_name, HBDBUS_LEN_APP_NAME);
-    hbdbus_name_tolower_copy (runner_name, norm_runner_name, HBDBUS_LEN_RUNNER_NAME);
+    purc_name_tolower_copy (host_name, norm_host_name, HBDBUS_LEN_HOST_NAME);
+    purc_name_tolower_copy (app_name, norm_app_name, HBDBUS_LEN_APP_NAME);
+    purc_name_tolower_copy (runner_name, norm_runner_name, HBDBUS_LEN_RUNNER_NAME);
     host_name = norm_host_name;
     app_name = norm_app_name;
     runner_name = norm_runner_name;
@@ -505,12 +505,12 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
         sig_len = hex2bin (encoded_sig, sig);
     }
     else {
-        return HBDBUS_SC_BAD_REQUEST;
+        return PCRDR_SC_BAD_REQUEST;
     }
 
     if (sig_len <= 0) {
         free (sig);
-        return HBDBUS_SC_BAD_REQUEST;
+        return PCRDR_SC_BAD_REQUEST;
     }
 
     retv = hbdbus_verify_signature (app_name,
@@ -519,13 +519,13 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     free (sig);
 
     if (retv < 0) {
-        ULOG_WARN ("No such app installed: %s\n", app_name);
-        return HBDBUS_SC_NOT_FOUND;
+        LOG_WARN ("No such app installed: %s\n", app_name);
+        return PCRDR_SC_NOT_FOUND;
     }
     else if (retv == 0) {
-        ULOG_WARN ("Failed to authenticate the app (%s) with challenge code: %s\n",
+        LOG_WARN ("Failed to authenticate the app (%s) with challenge code: %s\n",
                 app_name, (char *)endpoint->sta_data);
-        return HBDBUS_SC_UNAUTHORIZED;
+        return PCRDR_SC_UNAUTHORIZED;
     }
 
     /* make endpoint ready here */
@@ -538,22 +538,22 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
         host_name = HBDBUS_LOCALHOST;
     }
     
-    hbdbus_assemble_endpoint_name (host_name,
+    purc_assemble_endpoint_name (host_name,
                     app_name, runner_name, endpoint_name);
 
-    ULOG_INFO ("New endpoint: %s (%p)\n", endpoint_name, endpoint);
+    LOG_INFO ("New endpoint: %s (%p)\n", endpoint_name, endpoint);
 
     if (kvlist_get (&bus_srv->endpoint_list, endpoint_name)) {
-        ULOG_WARN ("Duplicated endpoint: %s\n", endpoint_name);
-        return HBDBUS_SC_CONFLICT;
+        LOG_WARN ("Duplicated endpoint: %s\n", endpoint_name);
+        return PCRDR_SC_CONFLICT;
     }
 
     if (!make_endpoint_ready (bus_srv, endpoint_name, endpoint)) {
-        ULOG_ERR ("Failed to store the endpoint: %s\n", endpoint_name);
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        LOG_ERR ("Failed to store the endpoint: %s\n", endpoint_name);
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
     }
 
-    ULOG_INFO ("New endpoint stored: %s (%p), %d endpoints totally.\n",
+    LOG_INFO ("New endpoint stored: %s (%p), %d endpoints totally.\n",
             endpoint_name, endpoint, bus_srv->nr_endpoints);
 
     endpoint->host_name = strdup (host_name);
@@ -562,11 +562,11 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     endpoint->status = ES_READY;
 
     fire_system_event (bus_srv, SBT_NEW_ENDPOINT, endpoint, NULL, NULL);
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 static int handle_auth_packet (BusServer* bus_srv, BusEndpoint* endpoint,
-        const hbdbus_json* jo)
+        const purc_variant_t jo)
 {
     if (endpoint->status == ES_AUTHING) {
         char buff [HBDBUS_MIN_PACKET_BUFF_SIZE];
@@ -575,7 +575,7 @@ static int handle_auth_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         assert (endpoint->sta_data);
 
         if ((retv = authenticate_endpoint (bus_srv, endpoint, jo)) !=
-                HBDBUS_SC_OK) {
+                PCRDR_SC_OK) {
 
             free (endpoint->sta_data);
             endpoint->sta_data = NULL;
@@ -587,11 +587,11 @@ static int handle_auth_packet (BusServer* bus_srv, BusEndpoint* endpoint,
                     "\"retCode\":%d,"
                     "\"retMsg\":\"%s\""
                     "}",
-                    retv, hbdbus_get_ret_message (retv));
+                    retv, pcrdr_get_ret_message (retv));
 
             if (n < 0 || (size_t)n >= sizeof (buff)) {
-                ULOG_ERR ("The size of buffer for packet is too small.\n");
-                return HBDBUS_SC_INTERNAL_SERVER_ERROR;
+                LOG_ERR ("The size of buffer for packet is too small.\n");
+                return PCRDR_SC_INTERNAL_SERVER_ERROR;
             }
             else
                 send_packet_to_endpoint (bus_srv, endpoint, buff, n);
@@ -612,22 +612,22 @@ static int handle_auth_packet (BusServer* bus_srv, BusEndpoint* endpoint,
                 bus_srv->server_name, endpoint->host_name);
 
         if (n < 0 || (size_t)n >= sizeof (buff)) {
-            ULOG_ERR ("The size of buffer for packet is too small.\n");
-            return HBDBUS_SC_INTERNAL_SERVER_ERROR;
+            LOG_ERR ("The size of buffer for packet is too small.\n");
+            return PCRDR_SC_INTERNAL_SERVER_ERROR;
         }
         else
             send_packet_to_endpoint (bus_srv, endpoint, buff, n);
 
-        return HBDBUS_SC_OK;
+        return PCRDR_SC_OK;
     }
 
-    return HBDBUS_SC_PRECONDITION_FAILED;
+    return PCRDR_SC_PRECONDITION_FAILED;
 }
 
 static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
-        const hbdbus_json* jo, const struct timespec *ts)
+        const purc_variant_t jo, const struct timespec *ts)
 {
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     const char *str_tmp;
     char to_endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
     char to_method_name [HBDBUS_LEN_METHOD_NAME + 1];
@@ -647,66 +647,66 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     char* packet_buff = buff_in_stack;
 
     if (json_object_object_get_ex (jo, "callId", &jo_tmp) &&
-            (call_id = json_object_get_string (jo_tmp))) {
+            (call_id = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto done;
     }
 
     if (json_object_object_get_ex (jo, "toEndpoint", &jo_tmp)) {
-        if ((str_tmp = json_object_get_string (jo_tmp))) {
+        if ((str_tmp = purc_variant_get_string_const (jo_tmp))) {
             void *data;
-            hbdbus_name_tolower_copy (str_tmp, to_endpoint_name, HBDBUS_LEN_ENDPOINT_NAME);
+            purc_name_tolower_copy (str_tmp, to_endpoint_name, HBDBUS_LEN_ENDPOINT_NAME);
             if ((data = kvlist_get (&bus_srv->endpoint_list, to_endpoint_name))) {
                 to_endpoint = *(BusEndpoint **)data;
             }
             else {
-                ret_code = HBDBUS_SC_NOT_FOUND;
+                ret_code = PCRDR_SC_NOT_FOUND;
                 goto done;
             }
         }
         else {
-            ret_code = HBDBUS_SC_BAD_REQUEST;
+            ret_code = PCRDR_SC_BAD_REQUEST;
             goto done;
         }
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto done;
     }
 
     if (json_object_object_get_ex (jo, "toMethod", &jo_tmp)) {
-        if ((str_tmp = json_object_get_string (jo_tmp))) {
+        if ((str_tmp = purc_variant_get_string_const (jo_tmp))) {
             void *data;
-            hbdbus_name_tolower_copy (str_tmp, to_method_name, HBDBUS_LEN_METHOD_NAME);
+            purc_name_tolower_copy (str_tmp, to_method_name, HBDBUS_LEN_METHOD_NAME);
             if ((data = kvlist_get (&to_endpoint->method_list, to_method_name))) {
                 to_method = *(MethodInfo **)data;
             }
             else {
-                ret_code = HBDBUS_SC_NOT_FOUND;
+                ret_code = PCRDR_SC_NOT_FOUND;
                 goto done;
             }
         }
         else {
-            ret_code = HBDBUS_SC_BAD_REQUEST;
+            ret_code = PCRDR_SC_BAD_REQUEST;
             goto done;
         }
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto done;
     }
 
     if (!match_pattern (&to_method->host_patt_list, endpoint->host_name,
                 1, HBDBUS_PATTERN_VAR_SELF, to_endpoint->host_name)) {
-        ret_code = HBDBUS_SC_METHOD_NOT_ALLOWED;
+        ret_code = PCRDR_SC_METHOD_NOT_ALLOWED;
         goto done;
     }
 
     if (!match_pattern (&to_method->app_patt_list, endpoint->app_name,
                 1, HBDBUS_PATTERN_VAR_OWNER, to_endpoint->app_name)) {
-        ret_code = HBDBUS_SC_METHOD_NOT_ALLOWED;
+        ret_code = PCRDR_SC_METHOD_NOT_ALLOWED;
         goto done;
     }
 
@@ -718,7 +718,7 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     }
 
     if (json_object_object_get_ex (jo, "parameter", &jo_tmp) &&
-            (parameter = json_object_get_string (jo_tmp))) {
+            (parameter = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         parameter = NULL;
@@ -726,9 +726,9 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
 
     assert (to_method->handler);
 
-    hbdbus_generate_unique_id (result_id, "result");
+    purc_generate_unique_id (result_id, "result");
     clock_gettime (CLOCK_MONOTONIC, &ts_start);
-    time_diff = hbdbus_get_elapsed_seconds (ts, &ts_start);
+    time_diff = purc_get_elapsed_seconds (ts, &ts_start);
 
     call_info.call_id = call_id;
     call_info.result_id = result_id;
@@ -738,14 +738,14 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
             parameter, &ret_code);
     endpoint->sta_data = NULL;
 
-    time_consumed = hbdbus_get_elapsed_seconds (&ts_start, NULL);
+    time_consumed = purc_get_elapsed_seconds (&ts_start, NULL);
 
-    if (ret_code == HBDBUS_SC_OK && result) {
-        escaped_result = hbdbus_escape_string_for_json (result);
+    if (ret_code == PCRDR_SC_OK && result) {
+        escaped_result = pcutils_escape_string_for_json (result);
         free (result);
 
         if (escaped_result == NULL) {
-            ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+            ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
         }
         else {
             sz_packet_buff = strlen (escaped_result) + HBDBUS_MIN_PACKET_BUFF_SIZE;
@@ -758,7 +758,7 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
                 if (packet_buff == NULL) {
                     packet_buff = buff_in_stack;
                     sz_packet_buff = sizeof (buff_in_stack);
-                    ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+                    ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
                 }
             }
         }
@@ -770,7 +770,7 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     }
 
 done:
-    if (ret_code == HBDBUS_SC_OK) {
+    if (ret_code == PCRDR_SC_OK) {
         n = snprintf (packet_buff, sz_packet_buff, 
             "{"
             "\"packetType\": \"result\","
@@ -789,20 +789,20 @@ done:
             to_method_name,
             time_diff, time_consumed,
             ret_code,
-            hbdbus_get_ret_message (ret_code),
+            pcrdr_get_ret_message (ret_code),
             escaped_result ? escaped_result : "");
 
     }
-    else if (ret_code == HBDBUS_SC_ACCEPTED) {
+    else if (ret_code == PCRDR_SC_ACCEPTED) {
         BusWaitingInfo waiting_info;
 
         waiting_info.ts = *ts;
         waiting_info.expected_time = expected_time;
-        hbdbus_assemble_endpoint_name (endpoint->host_name, endpoint->app_name,
+        purc_assemble_endpoint_name (endpoint->host_name, endpoint->app_name,
                 endpoint->runner_name, waiting_info.endpoint_name);
 
         if (!kvlist_set (&bus_srv->waiting_endpoints, result_id, &waiting_info)) {
-            ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+            ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
         }
         else {
             n = snprintf (packet_buff, sz_packet_buff, 
@@ -818,11 +818,11 @@ done:
                 result_id, call_id,
                 time_diff, time_consumed,
                 ret_code,
-                hbdbus_get_ret_message (ret_code));
+                pcrdr_get_ret_message (ret_code));
         }
     }
 
-    if (ret_code != HBDBUS_SC_OK && ret_code != HBDBUS_SC_ACCEPTED) {
+    if (ret_code != PCRDR_SC_OK && ret_code != PCRDR_SC_ACCEPTED) {
         n = snprintf (packet_buff, sz_packet_buff, 
             "{"
             "\"packetType\": \"error\","
@@ -836,7 +836,7 @@ done:
             HBDBUS_PROTOCOL_NAME, HBDBUS_PROTOCOL_VERSION,
             call_id ? call_id : "N/A",
             ret_code,
-            hbdbus_get_ret_message (ret_code));
+            pcrdr_get_ret_message (ret_code));
 
     }
 
@@ -844,7 +844,7 @@ done:
         send_packet_to_endpoint (bus_srv, endpoint, packet_buff, n);
     }
     else {
-        ULOG_ERR ("The size of buffer for packet is too small.\n");
+        LOG_ERR ("The size of buffer for packet is too small.\n");
     }
 
     if (escaped_result)
@@ -852,13 +852,13 @@ done:
     if (packet_buff && packet_buff != buff_in_stack)
         free (packet_buff);
 
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
-        const hbdbus_json* jo, const struct timespec *ts)
+        const purc_variant_t jo, const struct timespec *ts)
 {
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     int real_ret_code;
     const char *call_id, *result_id = NULL, *from_method_name;
     double time_diff, time_consumed;
@@ -872,26 +872,26 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     char* escaped_ret_value = NULL, *packet_buff = buff_in_stack;
 
     if (json_object_object_get_ex (jo, "resultId", &jo_tmp) &&
-            (result_id = json_object_get_string (jo_tmp))) {
-        if (!hbdbus_is_valid_unique_id (result_id)) {
-            ret_code = HBDBUS_SC_BAD_REQUEST;
+            (result_id = purc_variant_get_string_const (jo_tmp))) {
+        if (!purc_is_valid_unique_id (result_id)) {
+            ret_code = PCRDR_SC_BAD_REQUEST;
             goto failed;
         }
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "callId", &jo_tmp) &&
-            (call_id = json_object_get_string (jo_tmp))) {
-        if (!hbdbus_is_valid_unique_id (call_id)) {
-            ret_code = HBDBUS_SC_BAD_REQUEST;
+            (call_id = purc_variant_get_string_const (jo_tmp))) {
+        if (!purc_is_valid_unique_id (call_id)) {
+            ret_code = PCRDR_SC_BAD_REQUEST;
             goto failed;
         }
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
@@ -899,25 +899,25 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
             (real_ret_code = json_object_get_int (jo_tmp))) {
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "fromMethod", &jo_tmp) &&
-            (from_method_name = json_object_get_string (jo_tmp))) {
+            (from_method_name = purc_variant_get_string_const (jo_tmp))) {
         if (!hbdbus_is_valid_method_name (from_method_name)) {
-            ret_code = HBDBUS_SC_BAD_REQUEST;
+            ret_code = PCRDR_SC_BAD_REQUEST;
             goto failed;
         }
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
     data = kvlist_get (&bus_srv->waiting_endpoints, result_id);
     if (data == NULL) {
-        ret_code = HBDBUS_SC_GONE;
+        ret_code = PCRDR_SC_GONE;
         goto failed;
     }
     else {
@@ -928,7 +928,7 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
 
         if ((data = kvlist_get (&bus_srv->endpoint_list, waiting_info.endpoint_name)) ==
                 NULL) {
-            ret_code = HBDBUS_SC_NOT_FOUND;
+            ret_code = PCRDR_SC_NOT_FOUND;
             goto failed;
         }
         else {
@@ -945,7 +945,7 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     }
 
     if (json_object_object_get_ex (jo, "retValue", &jo_tmp) &&
-            (ret_value = json_object_get_string (jo_tmp))) {
+            (ret_value = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         ret_value = NULL;
@@ -953,10 +953,10 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
 
     packet_buff = buff_in_stack;
     if (ret_value) {
-        escaped_ret_value = hbdbus_escape_string_for_json (ret_value);
+        escaped_ret_value = pcutils_escape_string_for_json (ret_value);
 
         if (escaped_ret_value == NULL) {
-            ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+            ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
             goto failed;
         }
         else {
@@ -970,7 +970,7 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
                 if (packet_buff == NULL) {
                     packet_buff = buff_in_stack;
                     sz_packet_buff = sizeof (buff_in_stack);
-                    ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+                    ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
                     goto failed;
                 }
             }
@@ -980,7 +980,7 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         escaped_ret_value = NULL;
     }
 
-    time_diff = hbdbus_get_elapsed_seconds (ts, NULL);
+    time_diff = purc_get_elapsed_seconds (ts, NULL);
     n = snprintf (packet_buff, sz_packet_buff, 
         "{"
         "\"packetType\":\"result\","
@@ -997,20 +997,20 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         result_id, call_id,
         endpoint->host_name, endpoint->app_name, endpoint->runner_name,
         from_method_name, time_consumed, time_diff,
-        real_ret_code, hbdbus_get_ret_message (real_ret_code),
+        real_ret_code, pcrdr_get_ret_message (real_ret_code),
         escaped_ret_value ? escaped_ret_value : "");
 
     if (n > 0 && (size_t)n < sz_packet_buff) {
         send_packet_to_endpoint (bus_srv, to_endpoint, packet_buff, n);
-        ret_code = HBDBUS_SC_OK;
+        ret_code = PCRDR_SC_OK;
     }
     else {
-        ULOG_ERR ("The size of buffer for result packet is too small.\n");
-        ret_code = HBDBUS_SC_INTERNAL_SERVER_ERROR;
+        LOG_ERR ("The size of buffer for result packet is too small.\n");
+        ret_code = PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
 
 failed:
-    if (ret_code != HBDBUS_SC_OK) {
+    if (ret_code != PCRDR_SC_OK) {
         n = snprintf (packet_buff, sz_packet_buff, 
             "{"
             "\"packetType\":\"error\","
@@ -1023,13 +1023,13 @@ failed:
             "}",
             HBDBUS_PROTOCOL_NAME, HBDBUS_PROTOCOL_VERSION,
             result_id ? result_id : "N/A",
-            ret_code, hbdbus_get_ret_message (ret_code));
+            ret_code, pcrdr_get_ret_message (ret_code));
 
         if (n > 0 && (size_t)n < sz_packet_buff) {
             send_packet_to_endpoint (bus_srv, endpoint, packet_buff, n);
         }
         else {
-            ULOG_ERR ("The size of buffer for error packet is too small.\n");
+            LOG_ERR ("The size of buffer for error packet is too small.\n");
         }
     }
     else {
@@ -1045,7 +1045,7 @@ failed:
             send_packet_to_endpoint (bus_srv, endpoint, packet_buff, n);
         }
         else {
-            ULOG_ERR ("The size of buffer for resultSent packet is too small.\n");
+            LOG_ERR ("The size of buffer for resultSent packet is too small.\n");
         }
     }
 
@@ -1054,13 +1054,13 @@ failed:
     if (packet_buff && packet_buff != buff_in_stack)
         free (packet_buff);
 
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
-        const hbdbus_json* jo, const struct timespec *ts)
+        const purc_variant_t jo, const struct timespec *ts)
 {
-    hbdbus_json *jo_tmp;
+    purc_variant_t jo_tmp;
     const char *str_tmp;
     char bubble_name [HBDBUS_LEN_BUBBLE_NAME + 1];
     BubbleInfo *bubble;
@@ -1076,37 +1076,37 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     unsigned int nr_succeeded = 0, nr_failed = 0;
 
     if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp)) {
-        if ((str_tmp = json_object_get_string (jo_tmp))) {
+        if ((str_tmp = purc_variant_get_string_const (jo_tmp))) {
             void *data;
-            hbdbus_name_toupper_copy (str_tmp, bubble_name, HBDBUS_LEN_BUBBLE_NAME);
+            purc_name_toupper_copy (str_tmp, bubble_name, HBDBUS_LEN_BUBBLE_NAME);
             if ((data = kvlist_get (&endpoint->bubble_list, bubble_name))) {
                 bubble = *(BubbleInfo **)data;
             }
             else {
-                ret_code = HBDBUS_SC_NOT_FOUND;
+                ret_code = PCRDR_SC_NOT_FOUND;
                 goto failed;
             }
         }
         else {
-            ret_code = HBDBUS_SC_BAD_REQUEST;
+            ret_code = PCRDR_SC_BAD_REQUEST;
             goto failed;
         }
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "eventId", &jo_tmp) &&
-            (event_id = json_object_get_string (jo_tmp))) {
+            (event_id = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
-        ret_code = HBDBUS_SC_BAD_REQUEST;
+        ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "bubbleData", &jo_tmp) &&
-            (bubble_data = json_object_get_string (jo_tmp))) {
+            (bubble_data = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         bubble_data = NULL;
@@ -1114,10 +1114,10 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
 
     packet_buff = buff_in_stack;
     if (bubble_data) {
-        escaped_data = hbdbus_escape_string_for_json (bubble_data);
+        escaped_data = pcutils_escape_string_for_json (bubble_data);
 
         if (escaped_data == NULL) {
-            ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+            ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
             goto failed;
         }
         else {
@@ -1131,7 +1131,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
                 if (packet_buff == NULL) {
                     packet_buff = buff_in_stack;
                     sz_packet_buff = sizeof (buff_in_stack);
-                    ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+                    ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
                     goto failed;
                 }
             }
@@ -1142,7 +1142,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     }
 
     clock_gettime (CLOCK_MONOTONIC, &ts_start);
-    time_diff = hbdbus_get_elapsed_seconds (ts, &ts_start);
+    time_diff = purc_get_elapsed_seconds (ts, &ts_start);
 
     n = snprintf (packet_buff, sz_packet_buff, 
         "{"
@@ -1175,22 +1175,22 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
 
                 subscriber = *(BusEndpoint **)sub_data;
 
-                my_time_diff = hbdbus_get_elapsed_seconds (ts, NULL);
+                my_time_diff = purc_get_elapsed_seconds (ts, NULL);
                 snprintf (str_time_diff, sizeof (str_time_diff), "%.9f}", my_time_diff);
                 packet_buff [org_len] = '\0';
                 n = org_len + strlen (str_time_diff);
                 if (sz_packet_buff > (size_t)n) {
                     strcat (packet_buff, str_time_diff);
                     send_packet_to_endpoint (bus_srv, subscriber, packet_buff, n);
-                    ULOG_INFO ("Send event packet to endpoint (@%s/%s/%s): \n%s\n",
+                    LOG_INFO ("Send event packet to endpoint (@%s/%s/%s): \n%s\n",
                             subscriber->host_name,
                             subscriber->app_name,
                             subscriber->runner_name,
                             packet_buff);
                 }
                 else {
-                    ULOG_ERR ("The size of buffer for event packet is too small.\n");
-                    ret_code = HBDBUS_SC_INTERNAL_SERVER_ERROR;
+                    LOG_ERR ("The size of buffer for event packet is too small.\n");
+                    ret_code = PCRDR_SC_INTERNAL_SERVER_ERROR;
                     break;
                 }
                 nr_succeeded++;
@@ -1201,15 +1201,15 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
             }
         }
 
-        ret_code = HBDBUS_SC_OK;
+        ret_code = PCRDR_SC_OK;
     }
     else {
-        ULOG_ERR ("The size of buffer for event packet is too small.\n");
-        ret_code = HBDBUS_SC_INTERNAL_SERVER_ERROR;
+        LOG_ERR ("The size of buffer for event packet is too small.\n");
+        ret_code = PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
 
 failed:
-    if (ret_code != HBDBUS_SC_OK) {
+    if (ret_code != PCRDR_SC_OK) {
         n = snprintf (packet_buff, sz_packet_buff, 
             "{"
             "\"packetType\": \"error\","
@@ -1223,17 +1223,17 @@ failed:
             HBDBUS_PROTOCOL_NAME, HBDBUS_PROTOCOL_VERSION,
             event_id ? event_id : "N/A",
             ret_code,
-            hbdbus_get_ret_message (ret_code));
+            pcrdr_get_ret_message (ret_code));
 
         if (n > 0 && (size_t)n < sz_packet_buff) {
             send_packet_to_endpoint (bus_srv, endpoint, packet_buff, n);
         }
         else {
-            ULOG_ERR ("The size of buffer for error packet is too small.\n");
+            LOG_ERR ("The size of buffer for error packet is too small.\n");
         }
     }
     else {
-        time_consumed = hbdbus_get_elapsed_seconds (&ts_start, NULL);
+        time_consumed = purc_get_elapsed_seconds (&ts_start, NULL);
 
         n = snprintf (packet_buff, sz_packet_buff, 
             "{"
@@ -1252,7 +1252,7 @@ failed:
             send_packet_to_endpoint (bus_srv, endpoint, packet_buff, n);
         }
         else {
-            ULOG_ERR ("The size of buffer for eventSent packet is too small.\n");
+            LOG_ERR ("The size of buffer for eventSent packet is too small.\n");
         }
     }
 
@@ -1261,26 +1261,26 @@ failed:
     if (packet_buff && packet_buff != buff_in_stack)
         free (packet_buff);
 
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 int handle_json_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         const struct timespec *ts, const char* json, unsigned int len)
 {
-    int retv = HBDBUS_SC_OK;
-    hbdbus_json *jo = NULL, *jo_tmp;
+    int retv = PCRDR_SC_OK;
+    purc_variant_t jo = NULL, *jo_tmp;
 
-    ULOG_INFO ("Handling packet: \n%s\n", json);
+    LOG_INFO ("Handling packet: \n%s\n", json);
 
     jo = hbdbus_json_object_from_string (json, len, 2);
     if (jo == NULL) {
-        retv = HBDBUS_SC_UNPROCESSABLE_PACKET;
+        retv = PCRDR_SC_UNPROCESSABLE_PACKET;
         goto done;
     }
 
     if (json_object_object_get_ex (jo, "packetType", &jo_tmp)) {
         const char *pack_type;
-        pack_type = json_object_get_string (jo_tmp);
+        pack_type = purc_variant_get_string_const (jo_tmp);
 
         if (strcasecmp (pack_type, "auth") == 0) {
             retv = handle_auth_packet (bus_srv, endpoint, jo);
@@ -1295,11 +1295,11 @@ int handle_json_packet (BusServer* bus_srv, BusEndpoint* endpoint,
             retv = handle_event_packet (bus_srv, endpoint, jo, ts);
         }
         else {
-            retv = HBDBUS_SC_BAD_REQUEST;
+            retv = PCRDR_SC_BAD_REQUEST;
         }
     }
     else {
-        retv = HBDBUS_SC_BAD_REQUEST;
+        retv = PCRDR_SC_BAD_REQUEST;
     }
 
 done:
@@ -1312,53 +1312,53 @@ done:
 int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* method_name,
         const char* for_host, const char* for_app, method_handler handler)
 {
-    int retv = HBDBUS_SC_OK;
+    int retv = PCRDR_SC_OK;
     MethodInfo *info;
     char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
 
     if (!hbdbus_is_valid_method_name (method_name))
-        return HBDBUS_SC_BAD_REQUEST;
+        return PCRDR_SC_BAD_REQUEST;
 
-    hbdbus_name_tolower_copy (method_name, normalized_name, 0);
+    purc_name_tolower_copy (method_name, normalized_name, 0);
 
     if (kvlist_get (&endpoint->method_list, normalized_name)) {
-        return HBDBUS_SC_CONFLICT;
+        return PCRDR_SC_CONFLICT;
     }
 
     if ((info = calloc (1, sizeof (MethodInfo))) == NULL)
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
 
     if (!init_pattern_list (&info->host_patt_list, for_host)) {
-        retv = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
     if (info->host_patt_list.nr_patterns == 0) {
-        retv = HBDBUS_SC_NOT_ACCEPTABLE;
+        retv = PCRDR_SC_NOT_ACCEPTABLE;
         goto failed;
     }
 
     if (!init_pattern_list (&info->app_patt_list, for_app)) {
-        retv = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
     if (info->app_patt_list.nr_patterns == 0) {
-        retv = HBDBUS_SC_NOT_ACCEPTABLE;
+        retv = PCRDR_SC_NOT_ACCEPTABLE;
         goto failed;
     }
 
     info->handler = handler;
 
     if (!kvlist_set (&endpoint->method_list, normalized_name, &info)) {
-        retv = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
-    ULOG_INFO ("New procedure registered: @%s/%s/%s/%s (%p)\n",
+    LOG_INFO ("New procedure registered: @%s/%s/%s/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
             normalized_name, info);
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 
 failed:
     cleanup_pattern_list (&info->host_patt_list);
@@ -1374,12 +1374,12 @@ int revoke_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* met
     char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
 
     if (!hbdbus_is_valid_method_name (method_name))
-        return HBDBUS_SC_BAD_REQUEST;
+        return PCRDR_SC_BAD_REQUEST;
 
-    hbdbus_name_tolower_copy (method_name, normalized_name, 0);
+    purc_name_tolower_copy (method_name, normalized_name, 0);
 
     if ((data = kvlist_get (&endpoint->method_list, normalized_name)) == NULL) {
-        return HBDBUS_SC_NOT_FOUND;
+        return PCRDR_SC_NOT_FOUND;
     }
 
     info = *(MethodInfo **)data;
@@ -1389,61 +1389,61 @@ int revoke_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* met
     free (info);
 
     kvlist_delete (&endpoint->method_list, normalized_name);
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 int register_event (BusServer *bus_srv, BusEndpoint* endpoint, const char* bubble_name,
         const char* for_host, const char* for_app)
 {
-    int retv = HBDBUS_SC_OK;
+    int retv = PCRDR_SC_OK;
     BubbleInfo *info;
     char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
 
-    ULOG_INFO ("register_event: %s (%s, %s)\n", bubble_name, for_host, for_app);
+    LOG_INFO ("register_event: %s (%s, %s)\n", bubble_name, for_host, for_app);
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
-        return HBDBUS_SC_BAD_REQUEST;
+        return PCRDR_SC_BAD_REQUEST;
 
-    hbdbus_name_toupper_copy (bubble_name, normalized_name, 0);
+    purc_name_toupper_copy (bubble_name, normalized_name, 0);
 
     if (kvlist_get (&endpoint->bubble_list, normalized_name)) {
-        return HBDBUS_SC_CONFLICT;
+        return PCRDR_SC_CONFLICT;
     }
 
     if ((info = calloc (1, sizeof (BubbleInfo))) == NULL)
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
 
     if (!init_pattern_list (&info->host_patt_list, for_host)) {
-        retv = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
     if (info->host_patt_list.nr_patterns == 0) {
-        retv = HBDBUS_SC_NOT_ACCEPTABLE;
+        retv = PCRDR_SC_NOT_ACCEPTABLE;
         goto failed;
     }
 
     if (!init_pattern_list (&info->app_patt_list, for_app)) {
-        retv = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
     if (info->app_patt_list.nr_patterns == 0) {
-        retv = HBDBUS_SC_NOT_ACCEPTABLE;
+        retv = PCRDR_SC_NOT_ACCEPTABLE;
         goto failed;
     }
 
     kvlist_init (&info->subscriber_list, NULL);
 
     if (!kvlist_set (&endpoint->bubble_list, normalized_name, &info)) {
-        retv = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
-    ULOG_INFO ("New event registered: @%s/%s/%s/%s (%p)\n",
+    LOG_INFO ("New event registered: @%s/%s/%s/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
             normalized_name, info);
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 
 failed:
     cleanup_pattern_list (&info->host_patt_list);
@@ -1460,12 +1460,12 @@ int revoke_event (BusServer *bus_srv, BusEndpoint *endpoint, const char* bubble_
     char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
-        return HBDBUS_SC_BAD_REQUEST;
+        return PCRDR_SC_BAD_REQUEST;
 
-    hbdbus_name_toupper_copy (bubble_name, normalized_name, 0);
+    purc_name_toupper_copy (bubble_name, normalized_name, 0);
 
     if ((data = kvlist_get (&endpoint->bubble_list, normalized_name)) == NULL) {
-        return HBDBUS_SC_NOT_FOUND;
+        return PCRDR_SC_NOT_FOUND;
     }
 
     bubble = *(BubbleInfo **)data;
@@ -1489,7 +1489,7 @@ int revoke_event (BusServer *bus_srv, BusEndpoint *endpoint, const char* bubble_
     free (bubble);
 
     kvlist_delete (&endpoint->bubble_list, normalized_name);
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 int subscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
@@ -1502,12 +1502,12 @@ int subscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
-        return HBDBUS_SC_BAD_REQUEST;
+        return PCRDR_SC_BAD_REQUEST;
 
-    hbdbus_name_toupper_copy (bubble_name, normalized_name, 0);
+    purc_name_toupper_copy (bubble_name, normalized_name, 0);
 
     if ((data = kvlist_get (&endpoint->bubble_list, normalized_name)) == NULL) {
-        return HBDBUS_SC_NOT_FOUND;
+        return PCRDR_SC_NOT_FOUND;
     }
 
     assemble_endpoint_name (subscriber, subscriber_name);
@@ -1518,30 +1518,30 @@ int subscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
 
     info = *(BubbleInfo **)data;
     if (kvlist_get (&info->subscriber_list, subscriber_name)) {
-        ULOG_ERR ("Duplicated subscriber (%s) for bubble: %s\n",
+        LOG_ERR ("Duplicated subscriber (%s) for bubble: %s\n",
                 subscriber_name, normalized_name);
-        return HBDBUS_SC_CONFLICT;
+        return PCRDR_SC_CONFLICT;
     }
 
     if (!match_pattern (&info->host_patt_list, subscriber->host_name,
                 1, HBDBUS_PATTERN_VAR_SELF, endpoint->host_name)) {
-        return HBDBUS_SC_FORBIDDEN;
+        return PCRDR_SC_FORBIDDEN;
     }
 
     if (!match_pattern (&info->app_patt_list, subscriber->app_name,
                 1, HBDBUS_PATTERN_VAR_OWNER, endpoint->app_name)) {
-        return HBDBUS_SC_FORBIDDEN;
+        return PCRDR_SC_FORBIDDEN;
     }
 
     if (!kvlist_set (&subscriber->subscribed_list, event_name, &endpoint))
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
 
     if (!kvlist_set (&info->subscriber_list, subscriber_name, &subscriber)) {
         kvlist_delete (&subscriber->subscribed_list, event_name);
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
     }
 
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 int unsubscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
@@ -1554,15 +1554,15 @@ int unsubscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
 
     if (!hbdbus_is_valid_bubble_name (bubble_name)) {
-        ULOG_ERR ("Invalid bubble name: %s\n", bubble_name);
-        return HBDBUS_SC_BAD_REQUEST;
+        LOG_ERR ("Invalid bubble name: %s\n", bubble_name);
+        return PCRDR_SC_BAD_REQUEST;
     }
 
-    hbdbus_name_toupper_copy (bubble_name, normalized_name, 0);
+    purc_name_toupper_copy (bubble_name, normalized_name, 0);
 
     if ((data = kvlist_get (&endpoint->bubble_list, normalized_name)) == NULL) {
-        ULOG_ERR ("No such bubble: %s\n", normalized_name);
-        return HBDBUS_SC_NOT_FOUND;
+        LOG_ERR ("No such bubble: %s\n", normalized_name);
+        return PCRDR_SC_NOT_FOUND;
     }
 
     assemble_endpoint_name (subscriber, subscriber_name);
@@ -1573,12 +1573,12 @@ int unsubscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
 
     info = *(BubbleInfo **)data;
     if (kvlist_get (&info->subscriber_list, subscriber_name) == NULL) {
-        ULOG_ERR ("No such subscriber: %s\n", subscriber_name);
-        return HBDBUS_SC_NOT_FOUND;
+        LOG_ERR ("No such subscriber: %s\n", subscriber_name);
+        return PCRDR_SC_NOT_FOUND;
     }
 
     kvlist_delete (&info->subscriber_list, subscriber_name);
     kvlist_delete (&subscriber->subscribed_list, event_name);
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 

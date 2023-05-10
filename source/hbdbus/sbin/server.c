@@ -20,6 +20,8 @@
 ** along with this program.  If not, see http://www.gnu.org/licenses/.
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,9 +36,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <hibox/ulog.h>
-#include <hibox/kvlist.h>
-#include <hibox/safe_list.h>
+#include "internal/log.h"
+#include "internal/kvlist.h"
 
 #include "hbdbus.h"
 #include "server.h"
@@ -127,7 +128,7 @@ static struct option long_opts[] = {
     {"max-frame-size" , required_argument , 0 ,  0  } ,
     {"origin"         , required_argument , 0 ,  0  } ,
     {"backlog"        , required_argument , 0 , 'b' } ,
-#if HAVE_LIBSSL
+#if HAVE(OPENSSL)
     {"ssl-cert"       , required_argument , 0 ,  0  } ,
     {"ssl-key"        , required_argument , 0 ,  0  } ,
 #endif
@@ -188,7 +189,7 @@ static void
 handle_signal_action (int sig_number)
 {
     if (sig_number == SIGINT) {
-        ULOG_WARN ("SIGINT caught!\n");
+        LOG_WARN ("SIGINT caught!\n");
 #if 1
         the_server.running = false;
 #else
@@ -200,7 +201,7 @@ handle_signal_action (int sig_number)
 #endif
     }
     else if (sig_number == SIGPIPE) {
-        ULOG_WARN ("SIGPIPE caught!\n");
+        LOG_WARN ("SIGPIPE caught!\n");
     }
 }
 
@@ -240,7 +241,7 @@ parse_long_opt (const char *name, const char *oarg)
     if (!strcmp ("unixsocket", name))
         srv_set_config_unixsocket (oarg);
 
-#if HAVE_LIBSSL
+#if HAVE(OPENSSL)
     if (!strcmp ("ssl-cert", name))
         srv_set_config_sslcert (oarg);
 
@@ -352,14 +353,14 @@ on_accepted (void* sock_srv, SockClient* client)
             client);
 
     if (endpoint == NULL)
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
 
     // send challenge code
     ret_code = send_challenge_code (&the_server, endpoint);
-    if (ret_code != HBDBUS_SC_OK)
+    if (ret_code != PCRDR_SC_OK)
         return ret_code;
 
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 static int
@@ -376,10 +377,10 @@ on_packet (void* sock_srv, SockClient* client,
     }
     else {
         /* discard all packet in binary */
-        return HBDBUS_SC_NOT_ACCEPTABLE;
+        return PCRDR_SC_NOT_ACCEPTABLE;
     }
 
-    return HBDBUS_SC_OK;
+    return PCRDR_SC_OK;
 }
 
 static int
@@ -390,7 +391,7 @@ on_pending (void* sock_srv, SockClient* client)
     ev.events = EPOLLIN | EPOLLOUT;
     ev.data.ptr = client;
     if (epoll_ctl (the_server.epollfd, EPOLL_CTL_MOD, client->fd, &ev) == -1) {
-        ULOG_ERR ("Failed epoll_ctl to the client fd (%d): %s\n",
+        LOG_ERR ("Failed epoll_ctl to the client fd (%d): %s\n",
                 client->fd, strerror (errno));
         assert (0);
     }
@@ -402,7 +403,7 @@ static int
 on_close (void* sock_srv, SockClient* client)
 {
     if (epoll_ctl (the_server.epollfd, EPOLL_CTL_DEL, client->fd, NULL) == -1) {
-        ULOG_WARN ("Failed to call epoll_ctl to delete the client fd (%d): %s\n",
+        LOG_WARN ("Failed to call epoll_ctl to delete the client fd (%d): %s\n",
                 client->fd, strerror (errno));
     }
 
@@ -413,13 +414,13 @@ on_close (void* sock_srv, SockClient* client)
         if (assemble_endpoint_name (endpoint, endpoint_name) > 0) {
             if (kvlist_delete (&the_server.endpoint_list, endpoint_name)) {
                 the_server.nr_endpoints--;
-                ULOG_INFO ("An authenticated endpoint removed: %s (%p), %d endpoints left.\n",
+                LOG_INFO ("An authenticated endpoint removed: %s (%p), %d endpoints left.\n",
                     endpoint_name, endpoint, the_server.nr_endpoints);
             }
         }
         else {
             remove_dangling_endpoint (&the_server, endpoint);
-            ULOG_INFO ("An endpoint not authenticated removed: (%p), %d endpoints left.\n",
+            LOG_INFO ("An endpoint not authenticated removed: (%p), %d endpoints left.\n",
                     endpoint, the_server.nr_endpoints);
         }
         del_endpoint (&the_server, endpoint, CDE_LOST_CONNECTION);
@@ -436,7 +437,7 @@ on_error (void* sock_srv, SockClient* client, int err_code)
     int n;
     char buff [HBDBUS_MIN_PACKET_BUFF_SIZE];
 
-    if (err_code == HBDBUS_SC_IOERR)
+    if (err_code == PCRDR_SC_IOERR)
         return;
 
     n = snprintf (buff, sizeof (buff), 
@@ -448,7 +449,7 @@ on_error (void* sock_srv, SockClient* client, int err_code)
             "\"retMsg\":\"%s\""
             "}",
             HBDBUS_PROTOCOL_NAME, HBDBUS_PROTOCOL_VERSION,
-            err_code, hbdbus_get_ret_message (err_code));
+            err_code, pcrdr_get_ret_message (err_code));
 
     if (n < 0 || (size_t)n >= sizeof (buff)) {
         // should never reach here
@@ -467,7 +468,7 @@ static inline void
 update_endpoint_living_time (BusServer *bus_srv, BusEndpoint* endpoint)
 {
     if (endpoint->avl.key) {
-        time_t t_curr = hbdbus_get_monotoic_time ();
+        time_t t_curr = purc_get_monotoic_time ();
 
         if (endpoint->t_living != t_curr) {
             endpoint->t_living = t_curr;
@@ -487,16 +488,16 @@ run_server (void)
 {
     int us_listener = -1, ws_listener = -1;
     struct epoll_event ev, events[MAX_EVENTS];
-    time_t t_start = hbdbus_get_monotoic_time ();
+    time_t t_start = purc_get_monotoic_time ();
     time_t t_elapsed, t_elapsed_last = 0;
 
     // create unix socket
     if ((us_listener = us_listen (the_server.us_srv)) < 0) {
-        ULOG_ERR ("Unable to listen on Unix socket (%s)\n",
+        LOG_ERR ("Unable to listen on Unix socket (%s)\n",
                 srvcfg.unixsocket);
         goto error;
     }
-    ULOG_NOTE ("Listening on Unix Socket (%s)...\n", srvcfg.unixsocket);
+    LOG_NOTE ("Listening on Unix Socket (%s)...\n", srvcfg.unixsocket);
 
     the_server.us_srv->on_accepted = on_accepted;
     the_server.us_srv->on_packet = on_packet;
@@ -506,12 +507,12 @@ run_server (void)
 
     // create web socket listener if enabled
     if (the_server.ws_srv) {
-#ifdef HAVE_LIBSSL
+#if HAVE(OPENSSL)
         if (srvcfg.sslcert && srvcfg.sslkey) {
-            ULOG_NOTE ("==Using TLS/SSL==\n");
+            LOG_NOTE ("==Using TLS/SSL==\n");
             srvcfg.use_ssl = 1;
             if (ws_initialize_ssl_ctx (the_server.ws_srv)) {
-                ULOG_ERR ("Unable to initialize_ssl_ctx\n");
+                LOG_ERR ("Unable to initialize_ssl_ctx\n");
                 goto error;
             }
         }
@@ -520,7 +521,7 @@ run_server (void)
 #endif
 
         if ((ws_listener = ws_listen (the_server.ws_srv)) < 0) {
-            ULOG_ERR ("Unable to listen on Web socket (%s, %s)\n",
+            LOG_ERR ("Unable to listen on Web socket (%s, %s)\n",
                     srvcfg.host, srvcfg.port);
             goto error;
         }
@@ -531,19 +532,19 @@ run_server (void)
         the_server.ws_srv->on_close = on_close;
         the_server.ws_srv->on_error = on_error;
     }
-    ULOG_NOTE ("Listening on Web Socket (%s, %s) %s SSL...\n",
+    LOG_NOTE ("Listening on Web Socket (%s, %s) %s SSL...\n",
             srvcfg.host, srvcfg.port, srvcfg.sslcert ? "with" : "without");
 
     the_server.epollfd = epoll_create1 (EPOLL_CLOEXEC);
     if (the_server.epollfd == -1) {
-        ULOG_ERR ("Failed to call epoll_create1: %s\n", strerror (errno));
+        LOG_ERR ("Failed to call epoll_create1: %s\n", strerror (errno));
         goto error;
     }
 
     ev.events = EPOLLIN;
     ev.data.ptr = PTR_FOR_US_LISTENER;
     if (epoll_ctl (the_server.epollfd, EPOLL_CTL_ADD, us_listener, &ev) == -1) {
-        ULOG_ERR ("Failed to call epoll_ctl with us_listener (%d): %s\n",
+        LOG_ERR ("Failed to call epoll_ctl with us_listener (%d): %s\n",
                 us_listener, strerror (errno));
         goto error;
     }
@@ -552,7 +553,7 @@ run_server (void)
         ev.events = EPOLLIN;
         ev.data.ptr = PTR_FOR_WS_LISTENER;
         if (epoll_ctl (the_server.epollfd, EPOLL_CTL_ADD, ws_listener, &ev) == -1) {
-            ULOG_ERR ("Failed to call epoll_ctl with ws_listener (%d): %s\n",
+            LOG_ERR ("Failed to call epoll_ctl with ws_listener (%d): %s\n",
                     ws_listener, strerror (errno));
             goto error;
         }
@@ -567,11 +568,11 @@ run_server (void)
                 continue;
             }
 
-            ULOG_ERR ("Failed to call epoll_wait: %s\n", strerror (errno));
+            LOG_ERR ("Failed to call epoll_wait: %s\n", strerror (errno));
             goto error;
         }
         else if (nfds == 0) {
-            t_elapsed = hbdbus_get_monotoic_time () - t_start;
+            t_elapsed = purc_get_monotoic_time () - t_start;
             if (t_elapsed != t_elapsed_last) {
                 if (t_elapsed % 10 == 0) {
                     check_no_responding_endpoints (&the_server);
@@ -588,14 +589,14 @@ run_server (void)
             if (events[n].data.ptr == PTR_FOR_US_LISTENER) {
                 USClient * client = us_handle_accept (the_server.us_srv);
                 if (client == NULL) {
-                    ULOG_NOTE ("Refused a client\n");
+                    LOG_NOTE ("Refused a client\n");
                 }
                 else {
                     ev.events = EPOLLIN; /* do not use EPOLLET */
                     ev.data.ptr = client;
                     if (epoll_ctl (the_server.epollfd,
                                 EPOLL_CTL_ADD, client->fd, &ev) == -1) {
-                        ULOG_ERR ("Failed epoll_ctl for connected unix socket (%d): %s\n",
+                        LOG_ERR ("Failed epoll_ctl for connected unix socket (%d): %s\n",
                                 client->fd, strerror (errno));
                         goto error;
                     }
@@ -604,14 +605,14 @@ run_server (void)
             else if (events[n].data.ptr == PTR_FOR_WS_LISTENER) {
                 WSClient * client = ws_handle_accept (the_server.ws_srv, ws_listener);
                 if (client == NULL) {
-                    ULOG_NOTE ("Refused a client\n");
+                    LOG_NOTE ("Refused a client\n");
                 }
                 else {
                     ev.events = EPOLLIN; /* do not use EPOLLET */
                     ev.data.ptr = client;
                     if (epoll_ctl(the_server.epollfd,
                                 EPOLL_CTL_ADD, client->fd, &ev) == -1) {
-                        ULOG_ERR ("Failed epoll_ctl for connected web socket (%d): %s\n",
+                        LOG_ERR ("Failed epoll_ctl for connected web socket (%d): %s\n",
                                 client->fd, strerror (errno));
                         goto error;
                     }
@@ -640,7 +641,7 @@ run_server (void)
                             ev.data.ptr = usc;
                             if (epoll_ctl (the_server.epollfd,
                                         EPOLL_CTL_MOD, usc->fd, &ev) == -1) {
-                                ULOG_ERR ("Failed epoll_ctl for unix socket (%d): %s\n",
+                                LOG_ERR ("Failed epoll_ctl for unix socket (%d): %s\n",
                                         usc->fd, strerror (errno));
                                 goto error;
                             }
@@ -668,7 +669,7 @@ run_server (void)
                             ev.data.ptr = wsc;
                             if (epoll_ctl (the_server.epollfd,
                                         EPOLL_CTL_MOD, wsc->fd, &ev) == -1) {
-                                ULOG_ERR ("Failed epoll_ctl for web socket (%d): %s\n",
+                                LOG_ERR ("Failed epoll_ctl for web socket (%d): %s\n",
                                         usc->fd, strerror (errno));
                                 goto error;
                             }
@@ -676,7 +677,7 @@ run_server (void)
                     }
                 }
                 else {
-                    ULOG_ERR ("Bad socket type (%d): %s\n",
+                    LOG_ERR ("Bad socket type (%d): %s\n",
                             usc->ct, strerror (errno));
                     goto error;
                 }
@@ -720,27 +721,27 @@ init_bus_server (void)
 
     builtin = new_endpoint (&the_server, ET_BUILTIN, NULL);
     if (builtin == NULL) {
-        return HBDBUS_SC_INSUFFICIENT_STORAGE;
+        return PCRDR_SC_INSUFFICIENT_STORAGE;
     }
     the_server.endpoint_builtin = builtin;
 
     if (assemble_endpoint_name (builtin, endpoint_name) <= 0) {
         del_endpoint (&the_server, builtin, CDE_INITIALIZING);
-        return HBDBUS_SC_INTERNAL_SERVER_ERROR;
+        return PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
 
     if (!init_builtin_endpoint (&the_server, builtin)) {
         del_endpoint (&the_server, builtin, CDE_INITIALIZING);
-        return HBDBUS_SC_INTERNAL_SERVER_ERROR;
+        return PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
 
     if (!kvlist_set (&the_server.endpoint_list, endpoint_name, &builtin)) {
         del_endpoint (&the_server, builtin, CDE_INITIALIZING);
-        return HBDBUS_SC_INTERNAL_SERVER_ERROR;
+        return PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
     the_server.nr_endpoints++;
 
-    ULOG_INFO ("Builtin builtin stored: %s (%p)\n", endpoint_name, builtin);
+    LOG_INFO ("Builtin builtin stored: %s (%p)\n", endpoint_name, builtin);
     return 0;
 }
 
@@ -767,7 +768,7 @@ cleanup_bus_server (void)
         endpoint = *(BusEndpoint **)data;
 
         if (endpoint->type != ET_BUILTIN) {
-            ULOG_INFO ("Deleting endpoint: %s (%p) in cleanup_bus_server\n", name, endpoint);
+            LOG_INFO ("Deleting endpoint: %s (%p) in cleanup_bus_server\n", name, endpoint);
 
             if (endpoint->type == ET_UNIX_SOCKET && endpoint->entity.client) {
                 // avoid a duplicated call of del_endpoint
@@ -786,7 +787,7 @@ cleanup_bus_server (void)
         }
     }
 
-    ULOG_INFO ("Deleting builtin endpoint in cleanup_bus_server\n");
+    LOG_INFO ("Deleting builtin endpoint in cleanup_bus_server\n");
     del_endpoint (&the_server, the_server.endpoint_builtin, CDE_EXITING);
     the_server.nr_endpoints--;
 
@@ -797,7 +798,7 @@ cleanup_bus_server (void)
 
         while (node) {
             endpoint = (BusEndpoint *)node->data;
-            ULOG_WARN ("Removing dangling endpoint: %p, type (%d), status (%d)\n",
+            LOG_WARN ("Removing dangling endpoint: %p, type (%d), status (%d)\n",
                     endpoint, endpoint->type, endpoint->status);
 
             if (endpoint->type == ET_UNIX_SOCKET) {
@@ -809,7 +810,7 @@ cleanup_bus_server (void)
                 ws_remove_dangling_client (the_server.ws_srv, wsc);
             }
             else {
-                ULOG_WARN ("Bad type of dangling endpoint\n");
+                LOG_WARN ("Bad type of dangling endpoint\n");
             }
 
             del_endpoint (&the_server, endpoint, CDE_EXITING);
@@ -826,7 +827,7 @@ cleanup_bus_server (void)
 
     free (the_server.server_name);
 
-    ULOG_INFO ("the_server.nr_endpoints: %d\n", the_server.nr_endpoints);
+    LOG_INFO ("the_server.nr_endpoints: %d\n", the_server.nr_endpoints);
     assert (the_server.nr_endpoints == 0);
 }
 
@@ -864,25 +865,25 @@ main (int argc, char **argv)
     setup_signals ();
 
     if ((retval = init_bus_server ())) {
-        ULOG_ERR ("Error during init_bus_server: %s\n",
-                hbdbus_get_ret_message (retval));
+        LOG_ERR ("Error during init_bus_server: %s\n",
+                pcrdr_get_ret_message (retval));
         goto error;
     }
 
     if ((the_server.us_srv = us_init (&srvcfg)) == NULL) {
-        ULOG_ERR ("Error during us_init\n");
+        LOG_ERR ("Error during us_init\n");
         goto error;
     }
 
     if (srvcfg.websocket) {
         if ((the_server.ws_srv = ws_init (&srvcfg)) == NULL) {
-            ULOG_ERR ("Error during ws_init\n");
+            LOG_ERR ("Error during ws_init\n");
             goto error;
         }
     }
     else {
         the_server.ws_srv = NULL;
-        ULOG_NOTE ("Skip web socket");
+        LOG_NOTE ("Skip web socket");
     }
 
     run_server ();
@@ -890,7 +891,7 @@ main (int argc, char **argv)
     cleanup_bus_server ();
     ulog_close ();
 
-    ULOG_NOTE ("Will exit normally.\n");
+    LOG_NOTE ("Will exit normally.\n");
     return EXIT_SUCCESS;
 
 error:

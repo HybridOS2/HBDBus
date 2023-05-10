@@ -51,13 +51,13 @@ default_method_handler (BusServer *bus_srv,
         sz_packet_buff = HBDBUS_MIN_PACKET_BUFF_SIZE + len_param;
         packet_buff = malloc (HBDBUS_MIN_PACKET_BUFF_SIZE + len_param);
         if (packet_buff == NULL) {
-            *ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+            *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
             return NULL;
 	    }
     }
 
     if (method_param)
-        escaped_param = hbdbus_escape_string_for_json (method_param);
+        escaped_param = pcutils_escape_string_for_json (method_param);
     else
         escaped_param = NULL;
 
@@ -81,15 +81,15 @@ default_method_handler (BusServer *bus_srv,
         free (escaped_param);
 
     if (n < 0 || (size_t)n >= sz_packet_buff) {
-        ULOG_ERR ("The size of buffer for call packet is too small.\n");
-        *ret_code = HBDBUS_SC_INTERNAL_SERVER_ERROR;
+        LOG_ERR ("The size of buffer for call packet is too small.\n");
+        *ret_code = PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
     else {
         if (send_packet_to_endpoint (bus_srv, to, packet_buff, n)) {
-            *ret_code = HBDBUS_SC_BAD_CALLEE;
+            *ret_code = PCRDR_SC_BAD_CALLEE;
         }
         else {
-            *ret_code = HBDBUS_SC_ACCEPTED;
+            *ret_code = PCRDR_SC_ACCEPTED;
         }
     }
 
@@ -109,7 +109,7 @@ builtin_method_echo (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "echo") == 0);
 
-    *ret_code = HBDBUS_SC_OK;
+    *ret_code = PCRDR_SC_OK;
 
     if (method_param) {
         return strdup (method_param);
@@ -123,7 +123,7 @@ builtin_method_register_procedure (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, *jo_tmp;
     const char *param_method_name, *param_for_host, *param_for_app;
 
     assert (from->type != ET_BUILTIN);
@@ -136,21 +136,21 @@ builtin_method_register_procedure (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "methodName", &jo_tmp) &&
-        (param_method_name = json_object_get_string (jo_tmp))) {
+        (param_method_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "forHost", &jo_tmp) &&
-        (param_for_host = json_object_get_string (jo_tmp))) {
+        (param_for_host = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "forApp", &jo_tmp) &&
-        (param_for_app = json_object_get_string (jo_tmp))) {
+        (param_for_app = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
@@ -167,7 +167,7 @@ failed:
     if (jo)
         json_object_put (jo);
 
-    *ret_code = HBDBUS_SC_BAD_REQUEST;
+    *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
 }
 
@@ -176,7 +176,7 @@ builtin_method_revoke_procedure (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, *jo_tmp;
     const char *param_method_name;
 
     assert (from->type != ET_BUILTIN);
@@ -189,7 +189,7 @@ builtin_method_revoke_procedure (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "methodName", &jo_tmp) &&
-        (param_method_name = json_object_get_string (jo_tmp))) {
+        (param_method_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
@@ -202,7 +202,7 @@ builtin_method_revoke_procedure (BusServer *bus_srv,
 failed:
     if (jo)
         json_object_put (jo);
-    *ret_code = HBDBUS_SC_BAD_REQUEST;
+    *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
 }
 
@@ -211,14 +211,14 @@ builtin_method_register_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, *jo_tmp;
     const char *param_bubble_name, *param_for_host, *param_for_app;
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "registerEvent") == 0);
 
-    ULOG_INFO ("parameter: %s\n", method_param);
+    LOG_INFO ("parameter: %s\n", method_param);
 
     jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
     if (jo == NULL) {
@@ -226,21 +226,21 @@ builtin_method_register_event (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
-        (param_bubble_name = json_object_get_string (jo_tmp))) {
+        (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "forHost", &jo_tmp) &&
-        (param_for_host = json_object_get_string (jo_tmp))) {
+        (param_for_host = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "forApp", &jo_tmp) &&
-        (param_for_app = json_object_get_string (jo_tmp))) {
+        (param_for_app = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
@@ -255,7 +255,7 @@ failed:
     if (jo)
         json_object_put (jo);
 
-    *ret_code = HBDBUS_SC_BAD_REQUEST;
+    *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
 }
 
@@ -264,7 +264,7 @@ builtin_method_revoke_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, *jo_tmp;
     const char *param_bubble_name;
 
     assert (from->type != ET_BUILTIN);
@@ -277,7 +277,7 @@ builtin_method_revoke_event (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
-        (param_bubble_name = json_object_get_string (jo_tmp))) {
+        (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
@@ -291,7 +291,7 @@ failed:
     if (jo)
         json_object_put (jo);
 
-    *ret_code = HBDBUS_SC_BAD_REQUEST;
+    *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
 }
 
@@ -300,7 +300,7 @@ builtin_method_subscribe_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, *jo_tmp;
     const char *param_endpoint_name, *param_bubble_name;
     BusEndpoint* target_endpoint = NULL;
 
@@ -308,7 +308,7 @@ builtin_method_subscribe_event (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "subscribeEvent") == 0);
 
-    *ret_code = HBDBUS_SC_BAD_REQUEST;
+    *ret_code = PCRDR_SC_BAD_REQUEST;
 
     jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
     if (jo == NULL) {
@@ -316,17 +316,17 @@ builtin_method_subscribe_event (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
-        (param_endpoint_name = json_object_get_string (jo_tmp))) {
+        (param_endpoint_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
-        hbdbus_name_tolower_copy (param_endpoint_name, normalized_name,
+        purc_name_tolower_copy (param_endpoint_name, normalized_name,
                 HBDBUS_LEN_ENDPOINT_NAME);
         if ((data = kvlist_get (&bus_srv->endpoint_list, normalized_name))) {
             target_endpoint = *(BusEndpoint **)data;
         }
         else {
-            *ret_code = HBDBUS_SC_NOT_FOUND;
+            *ret_code = PCRDR_SC_NOT_FOUND;
             goto failed;
         }
     }
@@ -335,7 +335,7 @@ builtin_method_subscribe_event (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
-        (param_bubble_name = json_object_get_string (jo_tmp))) {
+        (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
@@ -357,7 +357,7 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, *jo_tmp;
     const char *param_endpoint_name, *param_bubble_name;
     BusEndpoint* target_endpoint = NULL;
 
@@ -365,7 +365,7 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "unsubscribeEvent") == 0);
 
-    *ret_code = HBDBUS_SC_BAD_REQUEST;
+    *ret_code = PCRDR_SC_BAD_REQUEST;
 
     jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
     if (jo == NULL) {
@@ -373,18 +373,18 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
-            (param_endpoint_name = json_object_get_string (jo_tmp))) {
+            (param_endpoint_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
-        hbdbus_name_tolower_copy (param_endpoint_name, normalized_name,
+        purc_name_tolower_copy (param_endpoint_name, normalized_name,
                 HBDBUS_LEN_ENDPOINT_NAME);
         if ((data = kvlist_get (&bus_srv->endpoint_list, normalized_name))) {
             target_endpoint = *(BusEndpoint **)data;
         }
         else {
-            ULOG_ERR ("No such endpoint: %s\n", normalized_name);
-            *ret_code = HBDBUS_SC_NOT_FOUND;
+            LOG_ERR ("No such endpoint: %s\n", normalized_name);
+            *ret_code = PCRDR_SC_NOT_FOUND;
             goto failed;
         }
     }
@@ -393,10 +393,10 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
-            (param_bubble_name = json_object_get_string (jo_tmp))) {
+            (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
-        *ret_code = HBDBUS_SC_BAD_REQUEST;
+        *ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
@@ -427,7 +427,7 @@ builtin_method_list_endpoints (BusServer *bus_srv,
     assert (strcasecmp (method_name, "listEndpoints") == 0);
 
 	if (printbuf_init (pb)) {
-        *ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
 		return NULL;
 	}
 
@@ -443,7 +443,7 @@ builtin_method_list_endpoints (BusServer *bus_srv,
         printbuf_strappend (pb, "{\"endpointName\":");
         sprintbuf (pb, "\"%s\",", endpoint_name);
         sprintbuf (pb, "\"livingSeconds\":%lu,",
-                hbdbus_get_monotoic_time () - endpoint->t_created);
+                purc_get_monotoic_time () - endpoint->t_created);
 
         n = 0;
         printbuf_strappend (pb, "\"methods\":[");
@@ -475,7 +475,7 @@ builtin_method_list_endpoints (BusServer *bus_srv,
 
     printbuf_strappend (pb, "]");
 
-    *ret_code = HBDBUS_SC_OK;
+    *ret_code = PCRDR_SC_OK;
     return pb->buf;
 }
 
@@ -494,16 +494,16 @@ builtin_method_list_procedures (BusServer *bus_srv,
     assert (strcasecmp (method_name, "listProcedures") == 0);
 
 	if (printbuf_init (pb)) {
-        *ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
 		return NULL;
 	}
 
     n = 0;
     printbuf_strappend (pb, "[");
-    if (hbdbus_is_valid_endpoint_name (method_param)) {
+    if (purc_is_valid_endpoint_name (method_param)) {
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
-        hbdbus_name_tolower_copy (method_param, normalized_name,
+        purc_name_tolower_copy (method_param, normalized_name,
                 HBDBUS_LEN_ENDPOINT_NAME);
 
         if ((data = kvlist_get (&bus_srv->endpoint_list, normalized_name))) {
@@ -579,7 +579,7 @@ builtin_method_list_procedures (BusServer *bus_srv,
     }
     printbuf_strappend (pb, "]");
 
-    *ret_code = HBDBUS_SC_OK;
+    *ret_code = PCRDR_SC_OK;
     return pb->buf;
 }
 
@@ -598,16 +598,16 @@ builtin_method_list_events (BusServer *bus_srv,
     assert (strcasecmp (method_name, "listEvents") == 0);
 
 	if (printbuf_init (pb)) {
-        *ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
 		return NULL;
 	}
 
     n = 0;
     printbuf_strappend (pb, "[");
-    if (hbdbus_is_valid_endpoint_name (method_param)) {
+    if (purc_is_valid_endpoint_name (method_param)) {
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
-        hbdbus_name_tolower_copy (method_param, normalized_name,
+        purc_name_tolower_copy (method_param, normalized_name,
                 HBDBUS_LEN_ENDPOINT_NAME);
 
         if ((data = kvlist_get (&bus_srv->endpoint_list, normalized_name))) {
@@ -683,7 +683,7 @@ builtin_method_list_events (BusServer *bus_srv,
     }
     printbuf_strappend (pb, "]");
 
-    *ret_code = HBDBUS_SC_OK;
+    *ret_code = PCRDR_SC_OK;
     return pb->buf;
 }
 
@@ -692,7 +692,7 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    hbdbus_json *jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, *jo_tmp;
     const char *param_endpoint_name, *param_bubble_name;
     BusEndpoint *target_endpoint = NULL;
     BubbleInfo *bubble = NULL;
@@ -704,28 +704,28 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
     struct printbuf my_buff, *pb = &my_buff;
 
 	if (printbuf_init (pb)) {
-        *ret_code = HBDBUS_SC_INSUFFICIENT_STORAGE;
+        *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
 		return NULL;
 	}
 
-    *ret_code = HBDBUS_SC_BAD_REQUEST;
+    *ret_code = PCRDR_SC_BAD_REQUEST;
     jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
     if (jo == NULL) {
         goto failed;
     }
 
     if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
-        (param_endpoint_name = json_object_get_string (jo_tmp))) {
+        (param_endpoint_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
-        hbdbus_name_tolower_copy (param_endpoint_name, normalized_name,
+        purc_name_tolower_copy (param_endpoint_name, normalized_name,
                 HBDBUS_LEN_ENDPOINT_NAME);
         if ((data = kvlist_get (&bus_srv->endpoint_list, normalized_name))) {
             target_endpoint = *(BusEndpoint **)data;
         }
         else {
-            *ret_code = HBDBUS_SC_NOT_FOUND;
+            *ret_code = PCRDR_SC_NOT_FOUND;
             goto failed;
         }
     }
@@ -734,11 +734,11 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
     }
 
     if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
-            (param_bubble_name = json_object_get_string (jo_tmp))) {
+            (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
 
-        hbdbus_name_toupper_copy (param_bubble_name, normalized_name, HBDBUS_LEN_BUBBLE_NAME);
+        purc_name_toupper_copy (param_bubble_name, normalized_name, HBDBUS_LEN_BUBBLE_NAME);
 
         if ((data = kvlist_get (&target_endpoint->bubble_list, normalized_name))) {
             bubble = *(BubbleInfo **)data;
@@ -773,11 +773,11 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
 
         printbuf_strappend (pb, "]");
 
-        *ret_code = HBDBUS_SC_OK;
+        *ret_code = PCRDR_SC_OK;
         return pb->buf;
     }
     else {
-        *ret_code = HBDBUS_SC_NOT_FOUND;
+        *ret_code = PCRDR_SC_NOT_FOUND;
     }
 
     return NULL;
@@ -793,81 +793,81 @@ bool init_builtin_endpoint (BusServer *bus_srv, BusEndpoint* builtin)
 {
     if (register_procedure (bus_srv, builtin, "echo",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_echo) != HBDBUS_SC_OK) {
+            builtin_method_echo) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "registerProcedure",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_register_procedure) != HBDBUS_SC_OK) {
+            builtin_method_register_procedure) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "revokeProcedure",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_revoke_procedure) != HBDBUS_SC_OK) {
+            builtin_method_revoke_procedure) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "registerEvent",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_register_event) != HBDBUS_SC_OK) {
+            builtin_method_register_event) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "revokeEvent",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_revoke_event) != HBDBUS_SC_OK) {
+            builtin_method_revoke_event) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "subscribeEvent",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_subscribe_event) != HBDBUS_SC_OK) {
+            builtin_method_subscribe_event) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "unsubscribeEvent",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_unsubscribe_event) != HBDBUS_SC_OK) {
+            builtin_method_unsubscribe_event) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "listEndpoints",
             HBDBUS_PATTERN_ANY, HBDBUS_APP_HBDBUS,
-            builtin_method_list_endpoints) != HBDBUS_SC_OK) {
+            builtin_method_list_endpoints) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "listProcedures",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_list_procedures) != HBDBUS_SC_OK) {
+            builtin_method_list_procedures) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "listEvents",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_list_events) != HBDBUS_SC_OK) {
+            builtin_method_list_events) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_procedure (bus_srv, builtin, "listEventSubscribers",
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
-            builtin_method_list_event_subscribers) != HBDBUS_SC_OK) {
+            builtin_method_list_event_subscribers) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_event (bus_srv, builtin, "NEWENDPOINT",
-            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != HBDBUS_SC_OK) {
+            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_event (bus_srv, builtin, "BROKENENDPOINT",
-            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != HBDBUS_SC_OK) {
+            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != PCRDR_SC_OK) {
         return false;
     }
 
-    ULOG_INFO ("The builtin procedures and events have been registered.\n");
+    LOG_INFO ("The builtin procedures and events have been registered.\n");
 
     return true;
 }
@@ -959,7 +959,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
     }
 
     if (n > 0 && (size_t)n < sizeof (bubble_data)) {
-        escaped_bubble_data = hbdbus_escape_string_for_json (bubble_data);
+        escaped_bubble_data = pcutils_escape_string_for_json (bubble_data);
         if (escaped_bubble_data == NULL)
             return false;
     }
@@ -1018,7 +1018,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
         }
     }
     else {
-        ULOG_ERR ("The size of buffer for system event packet is too small.\n");
+        LOG_ERR ("The size of buffer for system event packet is too small.\n");
     }
 
 failed:
