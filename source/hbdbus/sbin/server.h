@@ -25,6 +25,7 @@
 
 #include "internal/list.h"
 #include "internal/kvlist.h"
+#include "internal/gslist.h"
 
 #include "hbdbus.h"
 

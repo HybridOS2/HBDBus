@@ -24,11 +24,9 @@
 #include <string.h>
 #include <assert.h>
 
-#include <hibox/ulog.h>
-#include <hibox/md5.h>
-#include <hibox/sha256.h>
-#include <hibox/hmac.h>
-#include <hibox/json.h>
+#include <purc/purc.h>
+
+#include "internal/log.h"
 
 #include "hbdbus.h"
 #include "endpoint.h"
@@ -383,22 +381,22 @@ int send_challenge_code (BusServer* bus_srv, BusEndpoint* endpoint)
 {
     int n, retv;
     char key [32];
-    unsigned char ch_code_bin [SHA256_DIGEST_SIZE];
+    unsigned char ch_code_bin [PCUTILS_SHA256_DIGEST_SIZE];
     char *ch_code;
     char buff [HBDBUS_DEF_PACKET_BUFF_SIZE];
 
-    if ((endpoint->sta_data = malloc (SHA256_DIGEST_SIZE * 2 + 1)) == NULL) {
+    if ((endpoint->sta_data = malloc (PCUTILS_SHA256_DIGEST_SIZE * 2 + 1)) == NULL) {
         return PCRDR_SC_INSUFFICIENT_STORAGE;
     }
     ch_code = endpoint->sta_data;
 
     snprintf (key, sizeof (key), "hbdbus-%ld", random ());
 
-    hmac_sha256 (ch_code_bin,
+    pcutils_hmac_sha256 (ch_code_bin,
             (uint8_t*)HBDBUS_APP_HBDBUS, strlen (HBDBUS_APP_HBDBUS),
             (uint8_t*)key, strlen (key));
-    bin2hex (ch_code_bin, SHA256_DIGEST_SIZE, ch_code);
-    ch_code [SHA256_DIGEST_SIZE * 2] = 0;
+    pcutils_bin2hex (ch_code_bin, PCUTILS_SHA256_DIGEST_SIZE, ch_code, false);
+    ch_code [PCUTILS_SHA256_DIGEST_SIZE * 2] = 0;
 
     LOG_INFO ("Challenge code for new endpoint: %s\n", ch_code);
 
@@ -437,34 +435,32 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     const char *host_name = NULL, *app_name = NULL, *runner_name = NULL;
     const char *encoded_sig = NULL, *encoding = NULL;
     unsigned char *sig;
-    int sig_len = 0;
+    size_t sig_len = 0;
     int prot_ver = 0, retv;
     char norm_host_name [HBDBUS_LEN_HOST_NAME + 1];
     char norm_app_name [HBDBUS_LEN_APP_NAME + 1];
     char norm_runner_name [HBDBUS_LEN_RUNNER_NAME + 1];
     char endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
-    if (json_object_object_get_ex (jo, "protocolName", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "protocolName"))) {
         prot_name = purc_variant_get_string_const (jo_tmp);
     }
-
-    if (json_object_object_get_ex (jo, "protocolVersion", &jo_tmp)) {
-        prot_ver = json_object_get_int (jo_tmp);
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "protocolVersion"))) {
+        purc_variant_cast_to_int32(jo_tmp, &prot_ver, true);
     }
-
-    if (json_object_object_get_ex (jo, "hostName", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "hostName"))) {
         host_name = purc_variant_get_string_const (jo_tmp);
     }
-    if (json_object_object_get_ex (jo, "appName", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "appName"))) {
         app_name = purc_variant_get_string_const (jo_tmp);
     }
-    if (json_object_object_get_ex (jo, "runnerName", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "runnerName"))) {
         runner_name = purc_variant_get_string_const (jo_tmp);
     }
-    if (json_object_object_get_ex (jo, "signature", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "signature"))) {
         encoded_sig = purc_variant_get_string_const (jo_tmp);
     }
-    if (json_object_object_get_ex (jo, "encodedIn", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "encodedIn"))) {
         encoding = purc_variant_get_string_const (jo_tmp);
     }
 
@@ -496,13 +492,13 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     assert (endpoint->sta_data);
 
     if (strcasecmp (encoding, "base64") == 0) {
-        sig_len = B64_DECODE_LEN (strlen (encoded_sig));
-        sig = malloc (sig_len);
-        sig_len = b64_decode (encoded_sig, sig, sig_len);
+        sig_len = pcutils_b64_decoded_length(strlen (encoded_sig));
+        sig = malloc(sig_len);
+        sig_len = pcutils_b64_decode(encoded_sig, sig, sig_len);
     }
     else if (strcasecmp (encoding, "hex") == 0) {
-        sig = malloc (strlen (encoded_sig) / 2 + 1);
-        sig_len = hex2bin (encoded_sig, sig);
+        sig = malloc(strlen (encoded_sig) / 2 + 1);
+        pcutils_hex2bin(encoded_sig, sig, &sig_len);
     }
     else {
         return PCRDR_SC_BAD_REQUEST;
@@ -646,16 +642,16 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     char result_id [HBDBUS_LEN_UNIQUE_ID + 1], *result, *escaped_result = NULL;
     char* packet_buff = buff_in_stack;
 
-    if (json_object_object_get_ex (jo, "callId", &jo_tmp) &&
-            (call_id = purc_variant_get_string_const (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "callId")) &&
+            (call_id = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         ret_code = PCRDR_SC_BAD_REQUEST;
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "toEndpoint", &jo_tmp)) {
-        if ((str_tmp = purc_variant_get_string_const (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "toEndpoint"))) {
+        if ((str_tmp = purc_variant_get_string_const(jo_tmp))) {
             void *data;
             purc_name_tolower_copy (str_tmp, to_endpoint_name, HBDBUS_LEN_ENDPOINT_NAME);
             if ((data = kvlist_get (&bus_srv->endpoint_list, to_endpoint_name))) {
@@ -676,8 +672,8 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "toMethod", &jo_tmp)) {
-        if ((str_tmp = purc_variant_get_string_const (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "toMethod"))) {
+        if ((str_tmp = purc_variant_get_string_const(jo_tmp))) {
             void *data;
             purc_name_tolower_copy (str_tmp, to_method_name, HBDBUS_LEN_METHOD_NAME);
             if ((data = kvlist_get (&to_endpoint->method_list, to_method_name))) {
@@ -710,15 +706,15 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "expectedTime", &jo_tmp)) {
-        expected_time = json_object_get_int (jo_tmp);
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "expectedTime"))) {
+        purc_variant_cast_to_int32(jo_tmp, &expected_time, true);
     }
     else {
         expected_time = -1;
     }
 
-    if (json_object_object_get_ex (jo, "parameter", &jo_tmp) &&
-            (parameter = purc_variant_get_string_const (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "parameter")) &&
+            (parameter = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         parameter = NULL;
@@ -871,8 +867,8 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     int ret_code, n;
     char* escaped_ret_value = NULL, *packet_buff = buff_in_stack;
 
-    if (json_object_object_get_ex (jo, "resultId", &jo_tmp) &&
-            (result_id = purc_variant_get_string_const (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "resultId")) &&
+            (result_id = purc_variant_get_string_const(jo_tmp))) {
         if (!purc_is_valid_unique_id (result_id)) {
             ret_code = PCRDR_SC_BAD_REQUEST;
             goto failed;
@@ -883,7 +879,7 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "callId", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "callId")) &&
             (call_id = purc_variant_get_string_const (jo_tmp))) {
         if (!purc_is_valid_unique_id (call_id)) {
             ret_code = PCRDR_SC_BAD_REQUEST;
@@ -895,16 +891,16 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "retCode", &jo_tmp) &&
-            (real_ret_code = json_object_get_int (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "retCode")) &&
+             purc_variant_cast_to_int32(jo_tmp, &real_ret_code, false)) {
     }
     else {
         ret_code = PCRDR_SC_BAD_REQUEST;
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "fromMethod", &jo_tmp) &&
-            (from_method_name = purc_variant_get_string_const (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "fromMethod")) &&
+            (from_method_name = purc_variant_get_string_const(jo_tmp))) {
         if (!hbdbus_is_valid_method_name (from_method_name)) {
             ret_code = PCRDR_SC_BAD_REQUEST;
             goto failed;
@@ -937,14 +933,14 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         }
     }
 
-    if (json_object_object_get_ex (jo, "timeConsumed", &jo_tmp) &&
-            (time_consumed = json_object_get_double (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "timeConsumed")) &&
+            purc_variant_cast_to_number(jo_tmp, &time_consumed, false)) {
     }
     else {
         time_consumed = 0.0f;
     }
 
-    if (json_object_object_get_ex (jo, "retValue", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "retValue")) &&
             (ret_value = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -1075,7 +1071,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     double time_diff, time_consumed;
     unsigned int nr_succeeded = 0, nr_failed = 0;
 
-    if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName"))) {
         if ((str_tmp = purc_variant_get_string_const (jo_tmp))) {
             void *data;
             purc_name_toupper_copy (str_tmp, bubble_name, HBDBUS_LEN_BUBBLE_NAME);
@@ -1097,7 +1093,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "eventId", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "eventId")) &&
             (event_id = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -1105,8 +1101,8 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleData", &jo_tmp) &&
-            (bubble_data = purc_variant_get_string_const (jo_tmp))) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleData")) &&
+            (bubble_data = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
         bubble_data = NULL;
@@ -1268,19 +1264,23 @@ int handle_json_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         const struct timespec *ts, const char* json, unsigned int len)
 {
     int retv = PCRDR_SC_OK;
-    purc_variant_t jo = NULL, *jo_tmp;
+    purc_variant_t jo = NULL, jo_tmp;
 
     LOG_INFO ("Handling packet: \n%s\n", json);
 
-    jo = hbdbus_json_object_from_string (json, len, 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(json, len);
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         retv = PCRDR_SC_UNPROCESSABLE_PACKET;
         goto done;
     }
 
-    if (json_object_object_get_ex (jo, "packetType", &jo_tmp)) {
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "packetType"))) {
         const char *pack_type;
-        pack_type = purc_variant_get_string_const (jo_tmp);
+        pack_type = purc_variant_get_string_const(jo_tmp);
+        if (pack_type == NULL) {
+            retv = PCRDR_SC_BAD_REQUEST;
+            goto done;
+        }
 
         if (strcasecmp (pack_type, "auth") == 0) {
             retv = handle_auth_packet (bus_srv, endpoint, jo);
@@ -1304,7 +1304,7 @@ int handle_json_packet (BusServer* bus_srv, BusEndpoint* endpoint,
 
 done:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref(jo);
 
     return retv;
 }
@@ -1312,6 +1312,7 @@ done:
 int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* method_name,
         const char* for_host, const char* for_app, method_handler handler)
 {
+    (void)bus_srv;
     int retv = PCRDR_SC_OK;
     MethodInfo *info;
     char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
@@ -1369,6 +1370,7 @@ failed:
 
 int revoke_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* method_name)
 {
+    (void)bus_srv;
     void *data;
     MethodInfo *info;
     char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
@@ -1395,6 +1397,7 @@ int revoke_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* met
 int register_event (BusServer *bus_srv, BusEndpoint* endpoint, const char* bubble_name,
         const char* for_host, const char* for_app)
 {
+    (void)bus_srv;
     int retv = PCRDR_SC_OK;
     BubbleInfo *info;
     char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
@@ -1454,6 +1457,7 @@ failed:
 
 int revoke_event (BusServer *bus_srv, BusEndpoint *endpoint, const char* bubble_name)
 {
+    (void)bus_srv;
     const char* name;
     void *data;
     BubbleInfo *bubble;
@@ -1495,6 +1499,7 @@ int revoke_event (BusServer *bus_srv, BusEndpoint *endpoint, const char* bubble_
 int subscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
         const char* bubble_name, BusEndpoint* subscriber)
 {
+    (void)bus_srv;
     void *data;
     BubbleInfo *info;
     char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
@@ -1547,6 +1552,7 @@ int subscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
 int unsubscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
         const char* bubble_name, BusEndpoint* subscriber)
 {
+    (void)bus_srv;
     void *data;
     BubbleInfo *info;
     char subscriber_name [HBDBUS_LEN_ENDPOINT_NAME + 1];

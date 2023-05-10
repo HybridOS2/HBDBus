@@ -49,6 +49,8 @@
 #include <assert.h>
 #include <unistd.h>
 
+#include <purc/purc-utils.h>
+
 #include "internal/log.h"
 
 #include "hbdbus.h"
@@ -616,6 +618,7 @@ shutdown_ssl (WSClient * client)
       break;
     }
     LOG_NOTE ("SSL: SSL_shutdown, probably unrecoverable, forcing close.\n");
+    // fallthrough
   case SSL_ERROR_ZERO_RETURN:
   case SSL_ERROR_WANT_X509_LOOKUP:
   default:
@@ -1368,11 +1371,11 @@ http_error (WSServer *server, WSClient *client, const char *buffer)
 static void
 ws_sha1_digest (const char *s, int len, unsigned char *digest)
 {
-  Sha1Context sha;
+  pcutils_sha1_ctxt sha;
 
-  sha1_init (&sha);
-  sha1_update (&sha, (uint8_t *) s, len);
-  sha1_finalize (&sha, digest);
+  pcutils_sha1_begin(&sha);
+  pcutils_sha1_hash(&sha, (uint8_t *) s, len);
+  pcutils_sha1_end(&sha, digest);
 }
 
 /* Set the parsed websocket handshake headers. */
@@ -1394,7 +1397,7 @@ ws_set_handshake_headers (WSHeaders * headers)
 
   /* set response headers */
   headers->ws_accept =
-    b64_encode_alloc ((unsigned char *) digest, sizeof (digest));
+    pcutils_b64_encode_alloc ((unsigned char *) digest, sizeof (digest));
   headers->ws_resp = strdup (WS_SWITCH_PROTO_STR);
 
   if (!headers->upgrade)

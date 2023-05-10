@@ -25,6 +25,7 @@
 #define _HBDBUS_H_
 
 #include <purc/purc.h>
+#include "hbdbus-version.h"
 
 /* Constants */
 #define HBDBUS_PROTOCOL_NAME             "HBDBUS"
@@ -176,27 +177,6 @@ const char *hbdbus_get_err_message(int err_code);
  * Since: 1.0
  */
 int hbdbus_errcode_to_retcode(int err_code);
-
-/**
- * Parse a JSON string to a hbdbus_json object.
- * 
- * hbdbus_json_object_from_string:
- * @param json: the pointer to the JSON string.
- * @param len: the length of the JSON string. If it is equal to or less then 0,
- *      the function will get the whole length of the string by calling
- *      strlen().
- * @param depth: the maximal nesting depth for the JSON tokenzer.
- *
- * Parses a JSON string and returns a JSON object.
- *
- * Returns: A valid JSON object if success, NULL otherwise.
- *
- * Note that the caller should release the JSON object by calling
- * json_object_put().
- *
- * Since: 1.0
- */
-purc_variant_t hbdbus_json_object_from_string(const char *json, int len, int depth);
 
 /**
  * Check whether a string is a valid pattern list.

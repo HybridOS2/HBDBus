@@ -142,7 +142,7 @@ static struct option long_opts[] = {
 static void
 cmd_help (void)
 {
-    printf ("HBDBusD (%s) - the daemon of data bus system for HybridOS\n\n", HBDBUS_VERSION);
+    printf ("HBDBusD (%s) - the daemon of data bus system for HybridOS\n\n", HBDBUS_VERSION_STRING);
 
     printf (
             "Usage: "
@@ -277,7 +277,7 @@ read_option_args (int argc, char **argv)
                 cmd_help ();
                 return -1;
             case 'V':
-                fprintf (stdout, "HBDBusD: %s\n", HBDBUS_VERSION);
+                fprintf (stdout, "HBDBusD: %s\n", HBDBUS_VERSION_STRING);
                 return -1;
             case 0:
                 parse_long_opt (long_opts[idx].name, optarg);
@@ -345,6 +345,7 @@ srv_daemon (void)
 static int
 on_accepted (void* sock_srv, SockClient* client)
 {
+    (void)sock_srv;
     int ret_code;
     BusEndpoint* endpoint;
 
@@ -367,6 +368,7 @@ static int
 on_packet (void* sock_srv, SockClient* client,
             const char* body, unsigned int sz_body, int type)
 {
+    (void)sock_srv;
     assert (client->entity);
 
     if (type == PT_TEXT) {
@@ -386,6 +388,7 @@ on_packet (void* sock_srv, SockClient* client,
 static int
 on_pending (void* sock_srv, SockClient* client)
 {
+    (void)sock_srv;
     struct epoll_event ev;
 
     ev.events = EPOLLIN | EPOLLOUT;
@@ -402,6 +405,7 @@ on_pending (void* sock_srv, SockClient* client)
 static int
 on_close (void* sock_srv, SockClient* client)
 {
+    (void)sock_srv;
     if (epoll_ctl (the_server.epollfd, EPOLL_CTL_DEL, client->fd, NULL) == -1) {
         LOG_WARN ("Failed to call epoll_ctl to delete the client fd (%d): %s\n",
                 client->fd, strerror (errno));
@@ -700,6 +704,7 @@ get_waiting_info_len (struct kvlist *kv, const void *data)
 static int
 comp_living_time (const void *k1, const void *k2, void *ptr)
 {
+    (void)ptr;
     const BusEndpoint *e1 = k1;
     const BusEndpoint *e2 = k2;
 
@@ -852,6 +857,8 @@ main (int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+#if 0
+    /* TODO */
     ulog_open (-1, -1, "HBDBusD");
     if (srvcfg.accesslog) {
         ulog_threshold (LOG_INFO);
@@ -859,6 +866,7 @@ main (int argc, char **argv)
     else {
         ulog_threshold (LOG_NOTICE);
     }
+#endif
 
     srandom (time (NULL));
 
@@ -889,13 +897,13 @@ main (int argc, char **argv)
     run_server ();
 
     cleanup_bus_server ();
-    ulog_close ();
+    // TODO: ulog_close ();
 
     LOG_NOTE ("Will exit normally.\n");
     return EXIT_SUCCESS;
 
 error:
-    ulog_close ();
+    // TODO: ulog_close ();
     return EXIT_FAILURE;
 }
 

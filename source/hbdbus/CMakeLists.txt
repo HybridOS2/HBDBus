@@ -1,11 +1,13 @@
 include(GlobalCommon)
 
+configure_file(include/hbdbus-version.h.in ${FORWARDING_HEADERS_DIR}/hbdbus/hbdbus-version.h @ONLY)
+
 set(HBDBus_PRIVATE_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${HBDBUS_DIR}"
     "${HBDBUS_DIR}/include"
     "${HBDBus_DERIVED_SOURCES_DIR}"
-    "${FORWARDING_HEADERS_DIR}"
+    "${FORWARDING_HEADERS_DIR}/hbdbus"
 )
 
 list(APPEND HBDBus_SOURCES
@@ -80,13 +82,20 @@ list(APPEND hbdbusd_PRIVATE_INCLUDE_DIRECTORIES
     "${HBDBUS_DIR}"
     "${HBDBUS_DIR}/include"
     "${HBDBus_DERIVED_SOURCES_DIR}"
-    "${FORWARDING_HEADERS_DIR}"
+    "${FORWARDING_HEADERS_DIR}/hbdbus"
+    "${GLIB_INCLUDE_DIRS}"
 )
 
 HBDBUS_EXECUTABLE(hbdbusd)
 
 list(APPEND hbdbusd_SOURCES
+    "${HBDBUS_DIR}/common/gslist.c"
+    "${HBDBUS_DIR}/common/safe-list.c"
     "${HBDBUS_DIR}/common/helpers.c"
+    "${HBDBUS_DIR}/common/kvlist.c"
+    "${HBDBUS_DIR}/common/avl.c"
+    "${HBDBUS_DIR}/common/avl-cmp.c"
+    "${HBDBUS_DIR}/common/printbuf.c"
     "${HBDBUS_DIR}/common/sign_verify_rsa_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_hmac_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_dummy.c"
@@ -94,8 +103,8 @@ list(APPEND hbdbusd_SOURCES
     "${HBDBUS_DIR}/sbin/unixsocket.c"
     "${HBDBUS_DIR}/sbin/server.c"
     "${HBDBUS_DIR}/sbin/endpoint.c"
-    "${HBDBUS_DIR}/sbin/builtin_endpoint.c"
-    "${HBDBUS_DIR}/sbin/pattern_list.c"
+    "${HBDBUS_DIR}/sbin/builtin-endpoint.c"
+    "${HBDBUS_DIR}/sbin/pattern-list.c"
 )
 
 set(hbdbusd_LIBRARIES
@@ -120,7 +129,7 @@ list(APPEND hbdbuscl_PRIVATE_INCLUDE_DIRECTORIES
     "${HBDBUS_DIR}"
     "${HBDBUS_DIR}/include"
     "${HBDBus_DERIVED_SOURCES_DIR}"
-    "${FORWARDING_HEADERS_DIR}"
+    "${FORWARDING_HEADERS_DIR}/hbdbus"
 )
 
 HBDBUS_EXECUTABLE(hbdbuscl)

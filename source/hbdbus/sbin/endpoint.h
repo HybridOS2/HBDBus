@@ -25,11 +25,10 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <purc/purc-variant.h>
 
-#include <hibox/avl.h>
-#include <hibox/kvlist.h>
-#include <hibox/safe_list.h>
-#include <hibox/list.h>
+#include "internal/kvlist.h"
+#include "internal/safe-list.h"
 
 #include "hbdbus.h"
 #include "server.h"
@@ -137,11 +136,11 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
         BusEndpoint* cause, BusEndpoint* to, const char* add_msg);
 
 typedef struct pending_call_ {
-	struct safe_list list;
+    struct safe_list list;
 
     BusEndpoint* from_endpoint;
     const char* method_name;
-    const hbdbus_json* method_param;
+    purc_variant_t method_param;
 
     struct timeval queued_time;
 } pending_call;

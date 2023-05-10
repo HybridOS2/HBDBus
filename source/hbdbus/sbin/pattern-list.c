@@ -28,8 +28,8 @@
 
 #include <glib.h>
 
-#include <hibox/ulog.h>
-#include <hibox/kvlist.h>
+#include "internal/log.h"
+#include "internal/kvlist.h"
 
 #include "endpoint.h"
 
@@ -210,13 +210,13 @@ bool match_pattern (pattern_list *pl, const char* string,
 
             case PT_SPEC:
                 assert (pattern->spec);
-                if (g_pattern_match_string (pattern->spec, string))
+                if (g_pattern_spec_match_string (pattern->spec, string))
                     goto success;
                 break;
 
             case PT_NOT_SPEC:
                 assert (pattern->not_spec);
-                if (g_pattern_match_string (pattern->not_spec, string))
+                if (g_pattern_spec_match_string (pattern->not_spec, string))
                     goto failed;
                 break;
 

@@ -24,10 +24,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include <hibox/ulog.h>
-#include <hibox/sha256.h>
-#include <hibox/hmac.h>
-#include <hibox/json.h>
+#include "internal/log.h"
+#include "internal/printbuf.h"
 
 #include "hbdbus.h"
 #include "endpoint.h"
@@ -53,7 +51,7 @@ default_method_handler (BusServer *bus_srv,
         if (packet_buff == NULL) {
             *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
             return NULL;
-	    }
+        }
     }
 
     if (method_param)
@@ -105,6 +103,10 @@ builtin_method_echo (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "echo") == 0);
@@ -123,33 +125,37 @@ builtin_method_register_procedure (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    purc_variant_t jo = NULL, *jo_tmp;
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *param_method_name, *param_for_host, *param_for_app;
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "registerProcedure") == 0);
 
-    jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "methodName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "methodName")) &&
         (param_method_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "forHost", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "forHost")) &&
         (param_for_host = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "forApp", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "forApp")) &&
         (param_for_app = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -159,13 +165,13 @@ builtin_method_register_procedure (BusServer *bus_srv,
     *ret_code = register_procedure (bus_srv, from,
             param_method_name, param_for_host, param_for_app,
             default_method_handler);
-    json_object_put (jo);
+    purc_variant_unref(jo);
 
     return NULL;
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
@@ -176,19 +182,23 @@ builtin_method_revoke_procedure (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    purc_variant_t jo = NULL, *jo_tmp;
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *param_method_name;
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "revokeProcedure") == 0);
 
-    jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(method_param, strlen (method_param));
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "methodName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "methodName")) &&
         (param_method_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -196,12 +206,12 @@ builtin_method_revoke_procedure (BusServer *bus_srv,
     }
 
     *ret_code = revoke_procedure (bus_srv, from, param_method_name);
-    json_object_put (jo);
+    purc_variant_unref (jo);
     return NULL;
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
     *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
 }
@@ -211,7 +221,11 @@ builtin_method_register_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    purc_variant_t jo = NULL, *jo_tmp;
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *param_bubble_name, *param_for_host, *param_for_app;
 
     assert (from->type != ET_BUILTIN);
@@ -220,26 +234,26 @@ builtin_method_register_event (BusServer *bus_srv,
 
     LOG_INFO ("parameter: %s\n", method_param);
 
-    jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName")) &&
         (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "forHost", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "forHost")) &&
         (param_for_host = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "forApp", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "forApp")) &&
         (param_for_app = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -248,12 +262,12 @@ builtin_method_register_event (BusServer *bus_srv,
 
     *ret_code = register_event (bus_srv, from,
             param_bubble_name, param_for_host, param_for_app);
-    json_object_put (jo);
+    purc_variant_unref (jo);
     return NULL;
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
@@ -264,19 +278,23 @@ builtin_method_revoke_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    purc_variant_t jo = NULL, *jo_tmp;
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *param_bubble_name;
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "revokeEvent") == 0);
 
-    jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName")) &&
         (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -284,12 +302,12 @@ builtin_method_revoke_event (BusServer *bus_srv,
     }
 
     *ret_code = revoke_event (bus_srv, from, param_bubble_name);
-    json_object_put (jo);
+    purc_variant_unref (jo);
     return NULL;
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;
@@ -300,7 +318,11 @@ builtin_method_subscribe_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    purc_variant_t jo = NULL, *jo_tmp;
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *param_endpoint_name, *param_bubble_name;
     BusEndpoint* target_endpoint = NULL;
 
@@ -310,12 +332,12 @@ builtin_method_subscribe_event (BusServer *bus_srv,
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
 
-    jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "endpointName")) &&
         (param_endpoint_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
@@ -334,7 +356,7 @@ builtin_method_subscribe_event (BusServer *bus_srv,
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName")) &&
         (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -342,12 +364,12 @@ builtin_method_subscribe_event (BusServer *bus_srv,
     }
 
     *ret_code = subscribe_event (bus_srv, target_endpoint, param_bubble_name, from);
-    json_object_put (jo);
+    purc_variant_unref (jo);
     return NULL;
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
 
     return NULL;
 }
@@ -357,7 +379,11 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    purc_variant_t jo = NULL, *jo_tmp;
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *param_endpoint_name, *param_bubble_name;
     BusEndpoint* target_endpoint = NULL;
 
@@ -367,12 +393,12 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
 
-    jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "endpointName")) &&
             (param_endpoint_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
@@ -392,7 +418,7 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName")) &&
             (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
     }
     else {
@@ -402,12 +428,12 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
 
     *ret_code = unsubscribe_event (bus_srv, target_endpoint,
             param_bubble_name, from);
-    json_object_put (jo);
+    purc_variant_unref (jo);
     return NULL;
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
 
     return NULL;
 }
@@ -417,6 +443,11 @@ builtin_method_list_endpoints (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    (void)method_param;
     struct printbuf my_buff, *pb = &my_buff;
     const char *endpoint_name;
     void *data;
@@ -426,10 +457,10 @@ builtin_method_list_endpoints (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listEndpoints") == 0);
 
-	if (printbuf_init (pb)) {
+    if (printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
-		return NULL;
-	}
+        return NULL;
+    }
 
     printbuf_strappend (pb, "[");
 
@@ -484,6 +515,11 @@ builtin_method_list_procedures (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    (void)method_param;
     struct printbuf my_buff, *pb = &my_buff;
     const char *endpoint_name;
     void *data;
@@ -493,10 +529,10 @@ builtin_method_list_procedures (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listProcedures") == 0);
 
-	if (printbuf_init (pb)) {
+    if (printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
-		return NULL;
-	}
+        return NULL;
+    }
 
     n = 0;
     printbuf_strappend (pb, "[");
@@ -588,6 +624,11 @@ builtin_method_list_events (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    (void)method_param;
     struct printbuf my_buff, *pb = &my_buff;
     const char *endpoint_name;
     void *data;
@@ -597,10 +638,10 @@ builtin_method_list_events (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listEvents") == 0);
 
-	if (printbuf_init (pb)) {
+    if (printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
-		return NULL;
-	}
+        return NULL;
+    }
 
     n = 0;
     printbuf_strappend (pb, "[");
@@ -692,7 +733,12 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
         BusEndpoint* from, BusEndpoint* to,
         const char* method_name, const char* method_param, int* ret_code)
 {
-    purc_variant_t jo = NULL, *jo_tmp;
+    (void)bus_srv;
+    (void)from;
+    (void)to;
+    (void)method_name;
+    (void)method_param;
+    purc_variant_t jo = NULL, jo_tmp;
     const char *param_endpoint_name, *param_bubble_name;
     BusEndpoint *target_endpoint = NULL;
     BubbleInfo *bubble = NULL;
@@ -703,18 +749,18 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
 
     struct printbuf my_buff, *pb = &my_buff;
 
-	if (printbuf_init (pb)) {
+    if (printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
-		return NULL;
-	}
+        return NULL;
+    }
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
-    jo = hbdbus_json_object_from_string (method_param, strlen (method_param), 2);
-    if (jo == NULL) {
+    jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
+    if (jo == NULL || !purc_variant_is_object(jo)) {
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "endpointName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "endpointName")) &&
         (param_endpoint_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
@@ -733,7 +779,7 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
         goto failed;
     }
 
-    if (json_object_object_get_ex (jo, "bubbleName", &jo_tmp) &&
+    if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName")) &&
             (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
         char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
@@ -746,7 +792,7 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
     }
 
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
 
     if (bubble) {
         const char* name;
@@ -784,7 +830,7 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
 
 failed:
     if (jo)
-        json_object_put (jo);
+        purc_variant_unref (jo);
 
     return NULL;
 }

@@ -46,5 +46,8 @@
 #define LOG_INFO(x, ...)    \
     purc_log_info("%s: " x, __func__, ##__VA_ARGS__)
 
+#define LOG_NOTE(x, ...)    \
+    purc_log_info("%s: " x, __func__, ##__VA_ARGS__)
+
 #endif /* not defined _HBDBUS_INTERNAL_LOG_H_ */
 

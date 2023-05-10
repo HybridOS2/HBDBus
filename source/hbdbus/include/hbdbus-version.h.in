@@ -1,0 +1,170 @@
+/**
+ * @file hbdbus-version.h
+ * @author Vincent Wei (https://github.com/VincentWei)
+ * @date 2023/05/10
+ * @brief The version of HBDBus.
+ *
+ * Copyright (C) 2023 FMSoft <https://www.fmsoft.cn>
+ *
+ * This file is part of HBDBus.
+ *
+ * HBDBus is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HBDBus is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see http://www.gnu.org/licenses/.
+ */
+
+#ifndef HBDBUS_VERSION_H
+#define HBDBUS_VERSION_H
+
+#include <purc/purc-macros.h>
+
+/**
+ * HBDBUS_VERSION_MAJOR:
+ *
+ * Like hbdbus_get_major_version(), but from the headers used at
+ * application compile time, rather than from the library linked
+ * against at application run time.
+ *
+ * Since 0.0.1
+ */
+#define HBDBUS_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+
+/**
+ * HBDBUS_VERSION_MINOR:
+ *
+ * Like hbdbus_get_minor_version(), but from the headers used at
+ * application compile time, rather than from the library linked
+ * against at application run time.
+ *
+ * Since 0.0.1
+ */
+#define HBDBUS_VERSION_MINOR @PROJECT_VERSION_MINOR@
+
+/**
+ * HBDBUS_VERSION_MICRO:
+ *
+ * Like hbdbus_get_micro_version(), but from the headers used at
+ * application compile time, rather than from the library linked
+ * against at application run time.
+ *
+ * Since 0.0.1
+ */
+#define HBDBUS_VERSION_MICRO @PROJECT_VERSION_MICRO@
+
+#define HBDBUS_VERSION_STRING "@PROJECT_VERSION@"
+
+#define HBDBUS_API_VERSION_STRING "@HBDBUS_API_VERSION@"
+
+/**
+ * HBDBUS_CHECK_VERSION:
+ *
+ * @major: major version (e.g. 1 for version 1.2.5)
+ * @minor: minor version (e.g. 2 for version 1.2.5)
+ * @micro: micro version (e.g. 5 for version 1.2.5)
+ *
+ * Returns: %TRUE if the version of the PurC header files
+ * is the same as or newer than the passed-in version.
+ *
+ * Since 0.0.1
+ */
+#define HBDBUS_CHECK_VERSION(major, minor, micro) \
+    (HBDBUS_VERSION_MAJOR > (major) || \
+    (HBDBUS_VERSION_MAJOR == (major) && HBDBUS_VERSION_MINOR > (minor)) || \
+    (HBDBUS_VERSION_MAJOR == (major) && HBDBUS_VERSION_MINOR == (minor) && \
+     HBDBUS_VERSION_MICRO >= (micro)))
+
+PCA_EXTERN_C_BEGIN
+
+/**
+ * hbdbus_get_major_version:
+ *
+ * Returns: The major version of PurC.
+ *
+ * Since 0.0.1
+ */
+PCA_INLINE int
+hbdbus_get_major_version(void)
+{
+    return HBDBUS_VERSION_MAJOR;
+}
+
+/**
+ * hbdbus_get_minor_version:
+ *
+ * Returns: The minor version of PurC.
+ *
+ * Since 0.0.1
+ */
+PCA_INLINE int
+hbdbus_get_minor_version(void)
+{
+    return HBDBUS_VERSION_MINOR;
+}
+
+/**
+ * hbdbus_get_micro_version:
+ *
+ * Returns: The micro version of PurC.
+ *
+ * Since 0.0.1
+ */
+PCA_INLINE int
+hbdbus_get_micro_version(void)
+{
+    return HBDBUS_VERSION_MICRO;
+}
+
+/**
+ * hbdbus_get_versions:
+ *
+ * @major: the buffer for major version (nullable).
+ * @minor: the buffer for minor version (nullable).
+ * @micro: the buffer for micro version (nullable).
+ *
+ * Returns: none.
+ *
+ * Since 0.0.1
+ */
+PCA_INLINE void
+hbdbus_get_versions (int *major, int *minor, int *micro) {
+    if (major) *major = HBDBUS_VERSION_MAJOR;
+    if (minor) *minor = HBDBUS_VERSION_MINOR;
+    if (micro) *micro = HBDBUS_VERSION_MICRO;
+}
+
+/**
+ * hbdbus_version_string:
+ *
+ * Returns: the pointer to the PurC version string (e.g. "1.2.3" for version 1.2.3).
+ *
+ * Since 0.0.1
+ */
+PCA_INLINE const char *
+hbdbus_get_version_string (void) {
+    return HBDBUS_VERSION_STRING;
+}
+
+/**
+ * hbdbus_api_version_string:
+ *
+ * Returns: the pointer to the PurC API version string (e.g. "1.2" for version 1.2).
+ *
+ * Since 0.0.1
+ */
+PCA_INLINE const char *
+hbdbus_get_api_version_string (void) {
+    return HBDBUS_API_VERSION_STRING;
+}
+
+PCA_EXTERN_C_END
+
+#endif /* not defined HBDBUS_VERSION_H */
+
