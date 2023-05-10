@@ -64,7 +64,7 @@ default_method_handler (BusServer *bus_srv,
             "\"packetType\":\"call\","
             "\"callId\":\"%s\","
             "\"resultId\":\"%s\","
-            "\"fromEndpoint\":\"@%s/%s/%s\","
+            "\"fromEndpoint\":\"edpt://%s/%s/%s\","
             "\"toMethod\":\"%s\","
             "\"timeDiff\":%.9f,"
             "\"parameter\":\"%s\""
@@ -942,7 +942,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
         n = snprintf (bubble_data, sizeof (bubble_data), 
                 "{"
                 "\"endpointType\":\"%s\","
-                "\"endpointName\":\"@%s/%s/%s\","
+                "\"endpointName\":\"edpt://%s/%s/%s\","
                 "\"peerInfo\":\"%s\","
                 "\"totalEndpoints\":%d"
                 "}",
@@ -971,7 +971,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
         n = snprintf (bubble_data, sizeof (bubble_data), 
                 "{"
                 "\"endpointType\":\"%s\","
-                "\"endpointName\":\"@%s/%s/%s\","
+                "\"endpointName\":\"edpt://%s/%s/%s\","
                 "\"peerInfo\":\"%s\","
                 "\"brokenReason\":\"%s\","
                 "\"totalEndpoints\":%d"
@@ -985,7 +985,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
     else if (bubble_type == SBT_LOST_EVENT_GENERATOR) {
         n = snprintf (bubble_data, sizeof (bubble_data), 
                 "{"
-                "\"endpointName\":\"@%s/%s/%s\","
+                "\"endpointName\":\"edpt://%s/%s/%s\","
                 "}",
                 cause->host_name, cause->app_name, cause->runner_name);
         bubble_name = "LOSTEVENTGENERATOR";
@@ -993,7 +993,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
     else if (bubble_type == SBT_LOST_EVENT_BUBBLE) {
         n = snprintf (bubble_data, sizeof (bubble_data), 
                 "{"
-                "\"endpointName\":\"@%s/%s/%s\","
+                "\"endpointName\":\"edpt://%s/%s/%s\","
                 "\"bubbleName\":\"%s\","
                 "}",
                 cause->host_name, cause->app_name, cause->runner_name,
@@ -1017,7 +1017,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
         "{"
         "\"packetType\": \"event\","
         "\"eventId\": \"NOTIFICATION\","
-        "\"fromEndpoint\": \"@%s/%s/%s\","
+        "\"fromEndpoint\": \"edpt://%s/%s/%s\","
         "\"fromBubble\": \"%s\","
         "\"bubbleData\": \"%s\","
         "\"timeDiff\":0.0"

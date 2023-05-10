@@ -113,14 +113,14 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
             avl_delete (&bus_srv->living_avl, &endpoint->avl);
     }
     else {
-        strcpy (endpoint_name, "@endpoint/not/authenticated");
+        strcpy (endpoint_name, "edpt://endpoint/not/authenticated");
     }
 
     kvlist_for_each (&endpoint->method_list, method_name, data) {
         MethodInfo* method;
 
         method = *(MethodInfo **)data;
-        LOG_INFO ("Revoke procedure: @%s/%s/%s/%s (%p)\n",
+        LOG_INFO ("Revoke procedure: edpt://%s/%s/%s/%s (%p)\n",
                 endpoint->host_name, endpoint->app_name, endpoint->runner_name,
                 method_name, method);
         cleanup_pattern_list (&method->host_patt_list);
@@ -135,7 +135,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
         BubbleInfo* bubble;
 
         bubble = *(BubbleInfo **)data;
-        LOG_INFO ("Revoke event: @%s/%s/%s/%s (%p)\n",
+        LOG_INFO ("Revoke event: edpt://%s/%s/%s/%s (%p)\n",
                 endpoint->host_name, endpoint->app_name, endpoint->runner_name,
                 bubble_name, bubble);
         cleanup_pattern_list (&bubble->host_patt_list);
@@ -271,7 +271,7 @@ static void cleanup_endpoint_client (BusServer *bus_srv, BusEndpoint* endpoint)
         ws_cleanup_client (bus_srv->ws_srv, (WSClient*)endpoint->entity.client);
     }
 
-    LOG_WARN ("The endpoint (@%s/%s/%s) client cleaned up\n",
+    LOG_WARN ("The endpoint (edpt://%s/%s/%s) client cleaned up\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name);
 }
 
@@ -478,7 +478,7 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     if (!purc_is_valid_host_name (host_name) ||
             !purc_is_valid_app_name (app_name) ||
             !purc_is_valid_token (runner_name, HBDBUS_LEN_RUNNER_NAME)) {
-        LOG_WARN ("Bad endpoint name: @%s/%s/%s\n", host_name, app_name, runner_name);
+        LOG_WARN ("Bad endpoint name: edpt://%s/%s/%s\n", host_name, app_name, runner_name);
         return PCRDR_SC_NOT_ACCEPTABLE;
     }
 
@@ -772,7 +772,7 @@ done:
             "\"packetType\": \"result\","
             "\"resultId\": \"%s\","
             "\"callId\": \"%s\","
-            "\"fromEndpoint\": \"@%s/%s/%s\","
+            "\"fromEndpoint\": \"edpt://%s/%s/%s\","
             "\"fromMethod\": \"%s\","           // add ",", modified by gengyue
             "\"timeDiff\": %f,"
             "\"timeConsumed\": %f,"
@@ -982,7 +982,7 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         "\"packetType\":\"result\","
         "\"resultId\":\"%s\","
         "\"callId\":\"%s\","
-        "\"fromEndpoint\":\"@%s/%s/%s\","
+        "\"fromEndpoint\":\"edpt://%s/%s/%s\","
         "\"fromMethod\":\"%s\","
         "\"timeConsumed\":%f,"
         "\"timeDiff\":%f,"
@@ -1144,7 +1144,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         "{"
         "\"packetType\": \"event\","
         "\"eventId\": \"%s\","
-        "\"fromEndpoint\": \"@%s/%s/%s\","
+        "\"fromEndpoint\": \"edpt://%s/%s/%s\","
         "\"fromBubble\": \"%s\","
         "\"bubbleData\": \"%s\","
         "\"timeDiff\":",
@@ -1178,7 +1178,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
                 if (sz_packet_buff > (size_t)n) {
                     strcat (packet_buff, str_time_diff);
                     send_packet_to_endpoint (bus_srv, subscriber, packet_buff, n);
-                    LOG_INFO ("Send event packet to endpoint (@%s/%s/%s): \n%s\n",
+                    LOG_INFO ("Send event packet to endpoint (edpt://%s/%s/%s): \n%s\n",
                             subscriber->host_name,
                             subscriber->app_name,
                             subscriber->runner_name,
@@ -1356,7 +1356,7 @@ int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* m
         goto failed;
     }
 
-    LOG_INFO ("New procedure registered: @%s/%s/%s/%s (%p)\n",
+    LOG_INFO ("New procedure registered: edpt://%s/%s/%s/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
             normalized_name, info);
     return PCRDR_SC_OK;
@@ -1443,7 +1443,7 @@ int register_event (BusServer *bus_srv, BusEndpoint* endpoint, const char* bubbl
         goto failed;
     }
 
-    LOG_INFO ("New event registered: @%s/%s/%s/%s (%p)\n",
+    LOG_INFO ("New event registered: edpt://%s/%s/%s/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
             normalized_name, info);
     return PCRDR_SC_OK;

@@ -114,7 +114,7 @@ static struct cmd_info {
         AT_NONE, AT_BUBBLE, AT_NONE, AT_STRING, },
     { CMD_CALL,
         "call", "c", 
-        "call @localhost/cn.fmsoft.hybridos.hbdbus/builtin echo Hi, there",
+        "call edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin echo Hi, there",
         AT_ENDPOINT, AT_METHOD, AT_NONE, AT_STRING, },
     { CMD_REGISTER_EVENT,
         "registerEvent", "rge", 
@@ -130,11 +130,11 @@ static struct cmd_info {
         AT_NONE, AT_BUBBLE, AT_NONE, AT_STRING, },
     { CMD_SUBSCRIBE,
         "subscribe", "sub",
-        "sub @localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT",
+        "sub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT",
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
     { CMD_UNSUBSCRIBE,
         "unsubscribe", "unsub",
-        "unsub @localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT" ,
+        "unsub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT" ,
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
     { CMD_LIST_ENDPOINTS,
         "listendpoints", "lep", 
@@ -142,15 +142,15 @@ static struct cmd_info {
         AT_NONE, AT_NONE, AT_NONE, AT_NONE, },
     { CMD_LIST_PROCEDURES,
         "listprocedures", "lp",
-        "lp @localhost/cn.fmsoft.hybridos.hbdbus/builtin",
+        "lp edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin",
         AT_ENDPOINT, AT_NONE, AT_NONE, AT_NONE, },
     { CMD_LIST_EVENTS,
         "listevents", "le",
-        "le @localhost/cn.fmsoft.hybridos.hbdbus/builtin",
+        "le edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin",
         AT_ENDPOINT, AT_NONE, AT_NONE, AT_NONE, },
     { CMD_LIST_SUBSCRIBERS,
         "listsubscribers", "ls",
-        "ls @localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT",
+        "ls edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT",
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
 };
 
@@ -1342,7 +1342,7 @@ static const char *a_json =
     "\"packetType\": \"result\","
     "\"resultId\": \"RESULTXX-000000005FDAC261-000000001BED7939-0000000000000001\","
     "\"callId\": \"CALLXXXX-000000005FDAC261-000000001BEC6766-0000000000000000\","
-    "\"fromEndpoint\": \"@localhost/cn.fmsoft.hybridos.hbdbus/builtin\","
+    "\"fromEndpoint\": \"edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin\","
     "\"fromMethod\": \"echo\","
     "\"timeDiff\": 0.000047,"
     "\"timeConsumed\": 0.000000,"
