@@ -120,7 +120,7 @@ srv_set_config_sslkey (const char *sslkey)
 }
 
 /* *INDENT-OFF* */
-static char short_options[] = "adwbp:Vh";
+static char short_options[] = "adwbp:vh";
 static struct option long_opts[] = {
     {"without-websocket", no_argument     , 0 , 'w' } ,
     {"port"           , required_argument , 0 , 'p' } ,
@@ -133,7 +133,7 @@ static struct option long_opts[] = {
     {"ssl-key"        , required_argument , 0 ,  0  } ,
 #endif
     {"with-access-log", no_argument       , 0 , 'a' } ,
-    {"version"        , no_argument       , 0 , 'V' } ,
+    {"version"        , no_argument       , 0 , 'v' } ,
     {"help"           , no_argument       , 0 , 'h' } ,
     {0, 0, 0, 0}
 };
@@ -142,7 +142,7 @@ static struct option long_opts[] = {
 static void
 cmd_help (void)
 {
-    printf ("HBDBusD (%s) - the daemon of data bus system for HybridOS\n\n", HBDBUS_VERSION_STRING);
+    printf ("HBDBusD (%s) - the daemon of the data bus system for HybridOS\n\n", HBDBUS_VERSION_STRING);
 
     printf (
             "Usage: "
@@ -167,7 +167,7 @@ cmd_help (void)
             "\n"
             "HBDBus - the data bus system for HybridOS.\n"
             "\n"
-            "Copyright (C) 2020 FMSoft <https://www.fmsoft.cn>\n"
+            "Copyright (C) 2020 ~ 2023 FMSoft <https://www.fmsoft.cn>\n"
             "\n"
             "HBDBus is free software: you can redistribute it and/or modify\n"
             "it under the terms of the GNU General Public License as published by\n"
@@ -252,9 +252,8 @@ parse_long_opt (const char *name, const char *oarg)
 
 /* Read the user's supplied command line options. */
 static int
-read_option_args (int argc, char **argv)
+read_option_args(int argc, char **argv, int *daemon)
 {
-    int daemon = 0;
     int o, idx = 0;
 
     while ((o = getopt_long (argc, argv, short_options, long_opts, &idx)) >= 0) {
@@ -262,7 +261,7 @@ read_option_args (int argc, char **argv)
             break;
         switch (o) {
             case 'd':
-                daemon = 1;
+                *daemon = 1;
                 break;
             case 'w':
                 srv_set_config_websocket (0);
@@ -275,27 +274,31 @@ read_option_args (int argc, char **argv)
                 break;
             case 'h':
                 cmd_help ();
-                return -1;
-            case 'V':
+                return 1;
+            case 'v':
                 fprintf (stdout, "HBDBusD: %s\n", HBDBUS_VERSION_STRING);
-                return -1;
+                return 1;
             case 0:
                 parse_long_opt (long_opts[idx].name, optarg);
                 break;
             case '?':
                 cmd_help ();
-                return -1;
+                return 1;
             default:
-                return -1;
+                goto bad_arg;
         }
     }
 
     if (optind < argc) {
-        cmd_help ();
-        return -1;
+        goto bad_arg;
     }
 
-    return daemon;
+    return 0;
+
+bad_arg:
+    fprintf(stderr, "Bad command line arguments."
+            "Please run with the option `-h` for usage.\n");
+    return -1;
 }
 
 static int
@@ -654,7 +657,7 @@ run_server (void)
                 }
                 else if (usc->ct == CT_WEB_SOCKET) {
                     WSClient *wsc = (WSClient *)events[n].data.ptr;
-                   
+
                     if (events[n].events & EPOLLIN) {
                         if (wsc->entity) {
                             BusEndpoint *endpoint = container_of (usc->entity,
@@ -848,29 +851,37 @@ main (int argc, char **argv)
     srv_set_config_frame_size (HBDBUS_MAX_FRAME_PAYLOAD_SIZE);
     srv_set_config_backlog (SOMAXCONN);
 
-    retval = read_option_args (argc, argv);
+    int daemon = 0;
+    retval = read_option_args(argc, argv, &daemon);
     if (retval < 0) {
+        return EXIT_FAILURE;
+    }
+    else if (retval > 0) {
         return EXIT_SUCCESS;
     }
-    else if (retval && srv_daemon ()) {
+    else if (daemon && srv_daemon()) {
         perror ("Error during srv_daemon");
         return EXIT_FAILURE;
     }
 
-#if 0
-    /* TODO */
-    ulog_open (-1, -1, "HBDBusD");
+    retval = purc_init_ex(PURC_MODULE_EJSON, HBDBUS_APP_HBDBUS,
+            HBDBUS_RUNNER_DAEMON, NULL);
+    if (retval != PURC_ERROR_OK) {
+        fprintf(stderr, "Failed to initialize the PurC instance: %s\n",
+            purc_get_error_message(retval));
+        return EXIT_FAILURE;
+    }
+
     if (srvcfg.accesslog) {
-        ulog_threshold (LOG_INFO);
+        purc_enable_log_ex(PURC_LOG_MASK_DEFAULT | PURC_LOG_MASK_INFO, false);
     }
     else {
-        ulog_threshold (LOG_NOTICE);
+        purc_enable_log_ex(PURC_LOG_MASK_DEFAULT, false);
     }
-#endif
 
-    srandom (time (NULL));
+    srandom(time (NULL));
 
-    setup_signals ();
+    setup_signals();
 
     if ((retval = init_bus_server ())) {
         LOG_ERR ("Error during init_bus_server: %s\n",
@@ -897,13 +908,14 @@ main (int argc, char **argv)
     run_server ();
 
     cleanup_bus_server ();
-    // TODO: ulog_close ();
 
     LOG_NOTE ("Will exit normally.\n");
+
+    purc_cleanup();
     return EXIT_SUCCESS;
 
 error:
-    // TODO: ulog_close ();
+    purc_cleanup();
     return EXIT_FAILURE;
 }
 

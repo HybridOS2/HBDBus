@@ -46,6 +46,7 @@
 #define HBDBUS_LOCALHOST                 "localhost"
 #define HBDBUS_APP_HBDBUS                "cn.fmsoft.hybridos.hbdbus"
 #define HBDBUS_SYS_APPS                  "cn.fmsoft.hybridos.*"
+#define HBDBUS_RUNNER_DAEMON             "daemon"
 #define HBDBUS_RUNNER_BUILITIN           "builtin"
 #define HBDBUS_RUNNER_CMDLINE            "cmdline"
 

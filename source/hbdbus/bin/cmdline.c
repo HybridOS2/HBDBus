@@ -1546,10 +1546,10 @@ static int read_option_args (int argc, char **argv)
         switch (o) {
             case 'h':
                 print_usage ();
-                return -1;
+                return 1;
             case 'v':
                 fprintf (stdout, "HBDBusCL: %s\n", HBDBUS_VERSION_STRING);
-                return -1;
+                return 1;
             case 'a':
                 if (strlen (optarg) < HBDBUS_LEN_APP_NAME)
                     strcpy (the_client.app_name, optarg);
@@ -1560,23 +1560,33 @@ static int read_option_args (int argc, char **argv)
                 break;
             case '?':
                 print_usage ();
-                return -1;
+                return 1;
             default:
-                return -1;
+                goto bad_arg;
         }
     }
 
     if (optind < argc) {
-        print_usage ();
-        return -1;
+        goto bad_arg;
     }
 
     return 0;
+
+bad_arg:
+    fprintf(stderr, "Bad command line arguments."
+            "Please run with the option `-h` for usage.\n");
+    return -1;
+}
+
+static ssize_t cb_stdio_write(void *ctxt, const void *buf, size_t count)
+{
+    FILE *fp = ctxt;
+    return fwrite(buf, 1, count, fp);
 }
 
 int main (int argc, char **argv)
 {
-    int cnnfd = -1, ttyfd = -1, maxfd;
+    int cnnfd = -1, ttyfd = -1, maxfd, ret;
     hbdbus_conn* conn;
     fd_set rfds;
     struct timeval tv;
@@ -1584,9 +1594,11 @@ int main (int argc, char **argv)
 
     print_copying ();
 
-    if (read_option_args (argc, argv)) {
+    ret = read_option_args (argc, argv);
+    if (ret > 0)
         return EXIT_SUCCESS;
-    }
+    else if (ret < 0)
+        return EXIT_FAILURE;
 
     if (!the_client.app_name[0] ||
             !purc_is_valid_app_name (the_client.app_name)) {
@@ -1598,7 +1610,17 @@ int main (int argc, char **argv)
         strcpy (the_client.runner_name, HBDBUS_RUNNER_CMDLINE);
     }
 
-    // TODO: ulog_open (-1, -1, "HBDBusCL");
+    ret = purc_init_ex(PURC_MODULE_EJSON, the_client.app_name,
+            the_client.runner_name, NULL);
+    if (ret != PURC_ERROR_OK) {
+        fprintf(stderr, "Failed to initialize the PurC instance: %s\n",
+            purc_get_error_message(ret));
+        return EXIT_FAILURE;
+    }
+
+    purc_enable_log(true, false);
+
+    the_client.dump_stm = purc_rwstream_new_for_dump(stdout, cb_stdio_write);
 
     kvlist_init (&the_client.ret_value_list, NULL);
     the_client.running = true;
@@ -1768,7 +1790,11 @@ failed:
     if (cnnfd >= 0)
         hbdbus_disconnect (conn);
 
-    // TODO: ulog_close ();
-    return 0;
+    if (the_client.dump_stm)
+        purc_rwstream_destroy(the_client.dump_stm);
+
+    purc_cleanup();
+
+    return EXIT_SUCCESS;
 }
 
