@@ -112,7 +112,7 @@ const char *kvlist_set_ex(struct kvlist *kv, const char *name, const void *data)
     int len = kv->get_len ? kv->get_len(kv, data) : (int)(sizeof (void *));
 
     node = calloc_a(sizeof(struct kvlist_node) + len,
-        &name_buf, strlen(name) + 1);
+        &name_buf, strlen(name) + 1, NULL);
     if (!node)
         return NULL;
 
