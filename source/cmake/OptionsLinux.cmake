@@ -1,10 +1,22 @@
 include(GNUInstallDirs)
 
-HBDBUS_OPTION_BEGIN()
-
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(HBDBUS 0 0 0)
 
 add_definitions(-DBUILDING_LINUX__=1)
+
+find_package(OpenSSL 1.1.1)
+
+if (NOT OPENSSL_FOUND)
+    set(ENABLE_SSL_DEFAULT OFF)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_OPENSSL OFF)
+else ()
+    set(ENABLE_SSL_DEFAULT ON)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_OPENSSL ON)
+endif ()
+
+HBDBUS_OPTION_BEGIN()
+
+HBDBUS_OPTION_DEFAULT_PORT_VALUE(ENABLE_SSL PUBLIC ${ENABLE_SSL_DEFAULT})
 
 # Finalize the value for all options. Do not attempt to use an option before
 # this point, and do not attempt to change any option after this point.

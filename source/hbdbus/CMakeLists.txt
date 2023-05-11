@@ -1,6 +1,11 @@
 include(GlobalCommon)
 
-configure_file(include/hbdbus-version.h.in ${FORWARDING_HEADERS_DIR}/hbdbus/hbdbus-version.h @ONLY)
+configure_file(hbdbus.pc.in ${HBDBus_PKGCONFIG_FILE} @ONLY)
+
+configure_file(include/hbdbus-version.h.in
+        ${FORWARDING_HEADERS_DIR}/hbdbus/hbdbus-version.h @ONLY)
+
+set(HBDBus_OUTPUT_NAME "hbdbus")
 
 set(HBDBus_PRIVATE_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
@@ -52,13 +57,10 @@ HBDBUS_FRAMEWORK_TARGET(HBDBus)
 
 if (${HBDBus_LIBRARY_TYPE} MATCHES "SHARED")
     set_target_properties(HBDBus PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
-    install(TARGETS HBDBus DESTINATION "${LIB_INSTALL_DIR}")
 endif ()
 
 if (MSVC)
-    set_target_properties(HBDBus PROPERTIES
-        COMPILE_PDB_NAME ${HBDBus_OUTPUT_NAME}
-    )
+    set_target_properties(HBDBus PROPERTIES COMPILE_PDB_NAME ${HBDBus_OUTPUT_NAME})
 endif ()
 
 install(TARGETS HBDBus DESTINATION "${LIB_INSTALL_DIR}/")
@@ -68,9 +70,16 @@ set(HBDBus_FRAMEWORK_HEADERS
 )
 
 set(HBDBus_INSTALLED_HEADERS ${HBDBus_FRAMEWORK_HEADERS})
+list(APPEND HBDBus_INSTALLED_HEADERS
+    "${FORWARDING_HEADERS_DIR}/hbdbus/hbdbus-version.h"
+)
 
 install(FILES ${HBDBus_INSTALLED_HEADERS}
         DESTINATION "${HEADER_INSTALL_DIR}/hbdbus"
+)
+
+install(FILES "${HBDBus_PKGCONFIG_FILE}"
+        DESTINATION "${LIB_INSTALL_DIR}/pkgconfig"
 )
 
 include(target/HBDBus)

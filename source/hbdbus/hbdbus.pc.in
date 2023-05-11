@@ -1,0 +1,13 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: HBDBus
+Description: The data bus for HybridOS
+URL: https://github.com/HybridOS2/HBDBus
+Version: @PROJECT_VERSION@
+Requires.private: @HBDBUS_PKGCONFIG_REQUIRES@
+Libs: -L${libdir} -lhbdbus
+Libs.private: @HBDBUS_PKGCONFIG_LIBS@
+Cflags: -I${includedir} @HBDBUS_PKGCONFIG_CFLAGS@

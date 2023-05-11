@@ -8,21 +8,8 @@ add_definitions(-DHAVE_CONFIG_H=1)
 
 find_package(GLIB 2.44.0 REQUIRED)
 find_package(PurC 0.9.12 REQUIRED)
-find_package(OpenSSL 1.1.1)
 
-if (NOT OPENSSL_FOUND)
-    set(ENABLE_SSL_DEFAULT OFF)
-    SET_AND_EXPOSE_TO_BUILD(HAVE_OPENSSL OFF)
-else ()
-    set(ENABLE_SSL_DEFAULT ON)
-    SET_AND_EXPOSE_TO_BUILD(HAVE_OPENSSL ON)
-endif ()
-
-HBDBUS_OPTION_BEGIN()
-
-HBDBUS_OPTION_DEFAULT_PORT_VALUE(ENABLE_SSL PUBLIC ${ENABLE_SSL_DEFAULT})
-
-HBDBUS_OPTION_END()
+set(HBDBus_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/source/hbdbus/hbdbus.pc)
 
 option(USE_THIN_ARCHIVES "Produce all static libraries as thin archives" ON)
 if (USE_THIN_ARCHIVES)
@@ -127,6 +114,7 @@ set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Absolute path to l
 set(EXEC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Absolute path to executable installation directory")
 set(SYSEXEC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/sbin" CACHE PATH "Absolute path to system executable installation directory")
 set(LIBEXEC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Absolute path to install executables executed by the library")
+set(HEADER_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Absolute path to header installation directory")
 
 # Check whether features.h header exists.
 # Including glibc's one defines __GLIBC__, that is used in Platform.h
