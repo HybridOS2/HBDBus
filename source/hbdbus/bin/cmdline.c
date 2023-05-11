@@ -647,10 +647,26 @@ static void on_cmd_unsubscribe (hbdbus_conn *conn,
     }
 }
 
-static void serialize_variant_to_fp(FILE *fp, purc_variant_t v)
+static ssize_t cb_stdio_write(void *ctxt, const void *buf, size_t count)
 {
-    (void)fp;
-    (void)v;
+    FILE *fp = ctxt;
+    return fwrite(buf, 1, count, fp);
+}
+
+#define MY_VRT_OPTS \
+    (PCVRNT_SERIALIZE_OPT_SPACED | PCVRNT_SERIALIZE_OPT_PRETTY | \
+     PCVRNT_SERIALIZE_OPT_NOSLASHESCAPE)
+
+static void dump_json_object(FILE *fp, purc_variant_t v)
+{
+    if (fp == stderr) {
+        purc_variant_serialize(v, the_client.dump_stm, 0, MY_VRT_OPTS, NULL);
+    }
+    else {
+        purc_rwstream_t stm;
+        stm = purc_rwstream_new_for_dump(fp, cb_stdio_write);
+        purc_rwstream_destroy(stm);
+    }
 }
 
 static int on_result_list_procedures (hbdbus_conn* conn,
@@ -677,7 +693,7 @@ static int on_result_list_procedures (hbdbus_conn* conn,
             LOG_ERR ("Failed to build JSON object for endpoints:\n%s\n", ret_value);
         }
         else if (first_time) {
-            serialize_variant_to_fp(stderr, info->jo_endpoints);
+            dump_json_object(stderr, info->jo_endpoints);
             fputs ("\n", stderr);
         }
 
@@ -699,7 +715,7 @@ static void on_cmd_list_endpoints (hbdbus_conn* conn)
 
     if (info->jo_endpoints) {
         fputs ("ENDPOINTS:\n", stderr);
-        serialize_variant_to_fp(stderr, info->jo_endpoints);
+        dump_json_object(stderr, info->jo_endpoints);
         fputs ("\n", stderr);
     }
     else {
@@ -760,7 +776,7 @@ static void on_cmd_list_procedures (hbdbus_conn *conn,
             fprintf (stderr, "Bad result:\n%s\n", ret_value);
         }
         else {
-            serialize_variant_to_fp(stderr, jo);
+            dump_json_object(stderr, jo);
             fputs ("\n", stderr);
         }
 
@@ -798,7 +814,7 @@ static void on_cmd_list_events (hbdbus_conn *conn,
             fprintf (stderr, "Bad result:\n%s\n", ret_value);
         }
         else {
-            serialize_variant_to_fp(stderr, jo);
+            dump_json_object(stderr, jo);
             fputs ("\n", stderr);
         }
 
@@ -850,7 +866,7 @@ static void on_cmd_list_subscribers (hbdbus_conn *conn,
             fprintf (stderr, "Bad result:\n%s\n", ret_value);
         }
         else {
-            serialize_variant_to_fp(stderr, jo);
+            dump_json_object(stderr, jo);
             fputs ("\n", stderr);
         }
 
@@ -1498,11 +1514,11 @@ static void on_new_broken_endpoint (hbdbus_conn* conn,
 
     if (strcasecmp (from_bubble, "NEWENDPOINT") == 0) {
         fputs ("NEW ENDPOINT:\n", stderr);
-        serialize_variant_to_fp(stderr, jo);
+        dump_json_object(stderr, jo);
     }
     else if (strcasecmp (from_bubble, "BROKENENDPOINT") == 0) {
         fputs ("LOST ENDPOINT:\n", stderr);
-        serialize_variant_to_fp(stderr, jo);
+        dump_json_object(stderr, jo);
     }
 
     purc_variant_unref (jo);
@@ -1578,12 +1594,6 @@ bad_arg:
     return -1;
 }
 
-static ssize_t cb_stdio_write(void *ctxt, const void *buf, size_t count)
-{
-    FILE *fp = ctxt;
-    return fwrite(buf, 1, count, fp);
-}
-
 int main (int argc, char **argv)
 {
     int cnnfd = -1, ttyfd = -1, maxfd, ret;
@@ -1620,7 +1630,7 @@ int main (int argc, char **argv)
 
     purc_enable_log(true, false);
 
-    the_client.dump_stm = purc_rwstream_new_for_dump(stdout, cb_stdio_write);
+    the_client.dump_stm = purc_rwstream_new_for_dump(stderr, cb_stdio_write);
 
     kvlist_init (&the_client.ret_value_list, NULL);
     the_client.running = true;

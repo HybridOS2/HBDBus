@@ -1,7 +1,7 @@
 /*
 ** endpoint.c -- The endpoint (event/procedure/subscriber) management.
 **
-** Copyright (c) 2020 FMSoft (http://www.fmsoft.cn)
+** Copyright (c) 2020 ~ 2023 FMSoft (http://www.fmsoft.cn)
 **
 ** Author: Vincent Wei (https://github.com/VincentWei)
 **
@@ -299,11 +299,11 @@ int check_no_responding_endpoints (BusServer *bus_srv)
 #endif
 
     time_t t_curr = purc_get_monotoic_time ();
-	BusEndpoint *endpoint, *tmp;
+    BusEndpoint *endpoint, *tmp;
 
     LOG_INFO ("Checking no responding endpoints...\n");
 
-	avl_for_each_element_safe (&bus_srv->living_avl, endpoint, avl, tmp) {
+    avl_for_each_element_safe (&bus_srv->living_avl, endpoint, avl, tmp) {
         char name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
         assert (endpoint->type != ET_BUILTIN);
@@ -333,7 +333,7 @@ int check_no_responding_endpoints (BusServer *bus_srv)
             LOG_INFO ("Skip left endpoints since (%s): %ld\n", name, endpoint->t_living);
             break;
         }
-	}
+    }
 
     LOG_INFO ("Total endpoints removed: %d\n", n);
     return n;
@@ -365,6 +365,20 @@ int check_dangling_endpoints (BusServer *bus_srv)
 int send_packet_to_endpoint (BusServer* bus_srv,
         BusEndpoint* endpoint, const char* body, int len_body)
 {
+#if 0
+#define LEN_BODY_PART       32
+    char *part;
+    if (len_body > LEN_BODY_PART)
+        part = strndup(body, LEN_BODY_PART);
+    else
+        part = strndup(body, len_body);
+
+    LOG_INFO ("Packet body sending to edpt://%s/%s/%s: %s...\n",
+            endpoint->host_name, endpoint->app_name, endpoint->runner_name,
+            part);
+    free(part);
+#endif
+
     if (endpoint->type == ET_UNIX_SOCKET) {
         return us_send_packet (bus_srv->us_srv, (USClient *)endpoint->entity.client,
                 US_OPCODE_TEXT, body, len_body);
@@ -533,7 +547,7 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
         /* TODO: handle hostname for web socket connections here */
         host_name = HBDBUS_LOCALHOST;
     }
-    
+
     purc_assemble_endpoint_name (host_name,
                     app_name, runner_name, endpoint_name);
 
@@ -922,8 +936,8 @@ static int handle_result_packet (BusServer* bus_srv, BusEndpoint* endpoint,
         memcpy (&waiting_info, data, sizeof (BusWaitingInfo));
         kvlist_delete (&bus_srv->waiting_endpoints, result_id);
 
-        if ((data = kvlist_get (&bus_srv->endpoint_list, waiting_info.endpoint_name)) ==
-                NULL) {
+        if ((data = kvlist_get (&bus_srv->endpoint_list,
+                        waiting_info.endpoint_name)) == NULL) {
             ret_code = PCRDR_SC_NOT_FOUND;
             goto failed;
         }
@@ -1309,7 +1323,8 @@ done:
     return retv;
 }
 
-int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* method_name,
+int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint,
+        const char* method_name,
         const char* for_host, const char* for_app, method_handler handler)
 {
     (void)bus_srv;

@@ -538,9 +538,10 @@ run_server (void)
         the_server.ws_srv->on_pending = on_pending;
         the_server.ws_srv->on_close = on_close;
         the_server.ws_srv->on_error = on_error;
+
+        LOG_NOTE ("Listening on Web Socket (%s, %s) %s SSL...\n",
+                srvcfg.host, srvcfg.port, srvcfg.sslcert ? "with" : "without");
     }
-    LOG_NOTE ("Listening on Web Socket (%s, %s) %s SSL...\n",
-            srvcfg.host, srvcfg.port, srvcfg.sslcert ? "with" : "without");
 
     the_server.epollfd = epoll_create1 (EPOLL_CLOEXEC);
     if (the_server.epollfd == -1) {
@@ -872,11 +873,15 @@ main (int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    purc_log_facility_k facility = PURC_LOG_FACILITY_STDOUT;
+    if (daemon)
+        facility = PURC_LOG_FACILITY_FILE;
+
     if (srvcfg.accesslog) {
-        purc_enable_log_ex(PURC_LOG_MASK_DEFAULT | PURC_LOG_MASK_INFO, false);
+        purc_enable_log_ex(PURC_LOG_MASK_DEFAULT | PURC_LOG_MASK_INFO, facility);
     }
     else {
-        purc_enable_log_ex(PURC_LOG_MASK_DEFAULT, false);
+        purc_enable_log_ex(PURC_LOG_MASK_DEFAULT, facility);
     }
 
     srandom(time (NULL));
@@ -902,7 +907,7 @@ main (int argc, char **argv)
     }
     else {
         the_server.ws_srv = NULL;
-        LOG_NOTE ("Skip web socket");
+        LOG_NOTE ("Skip web socket\n");
     }
 
     run_server ();

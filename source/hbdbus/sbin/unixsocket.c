@@ -51,6 +51,9 @@ USServer *us_init (const ServerConfig* config)
 
 void us_stop (USServer * server)
 {
+    /* remove the socket file */
+    unlink (server->config->unixsocket);
+
     close (server->listener);
     free (server);
 }
@@ -63,34 +66,35 @@ int us_listen (USServer* server)
 
     /* create a Unix domain stream socket */
     if ((fd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        LOG_ERR ("Error duing calling `socket` in us_listen: %s\n", strerror (errno));
+        LOG_ERR ("Error duing calling `socket` in us_listen: %s\n",
+                strerror (errno));
         return (-1);
     }
 
     fcntl (fd, F_SETFD, FD_CLOEXEC);
 
-    /* in case it already exists */
-    unlink (server->config->unixsocket);
-
     /* fill in socket address structure */
     memset (&unix_addr, 0, sizeof(unix_addr));
     unix_addr.sun_family = AF_UNIX;
     strcpy (unix_addr.sun_path, server->config->unixsocket);
-    len = sizeof (unix_addr.sun_family) + strlen (unix_addr.sun_path);
+    len = sizeof (unix_addr.sun_family) + strlen (unix_addr.sun_path) + 1;
 
     /* bind the name to the descriptor */
     if (bind (fd, (struct sockaddr *) &unix_addr, len) < 0) {
-        LOG_ERR ("Error duing calling `bind` in us_listen: %s\n", strerror (errno));
+        LOG_ERR ("Error duing calling `bind` in us_listen: %s\n",
+                strerror (errno));
         goto error;
     }
     if (chmod (server->config->unixsocket, 0666) < 0) {
-        LOG_ERR ("Error duing calling `chmod` in us_listen: %s\n", strerror (errno));
+        LOG_ERR ("Error duing calling `chmod` in us_listen: %s\n",
+                strerror (errno));
         goto error;
     }
 
     /* tell kernel we're a server */
     if (listen (fd, server->config->backlog) < 0) {
-        LOG_ERR ("Error duing calling `listen` in us_listen: %s\n", strerror (errno));
+        LOG_ERR ("Error duing calling `listen` in us_listen: %s\n",
+                strerror (errno));
         goto error;
     }
 
@@ -131,7 +135,7 @@ static int us_accept (int listenfd, pid_t *pidptr, uid_t *uidptr)
         goto error;
     }
 
-    unix_addr.sun_path[len] = 0;            /* null terminate */
+    unix_addr.sun_path[len - 1] = 0;            /* null terminate */
     LOG_NOTE ("The peer address in us_accept: %s\n", unix_addr.sun_path);
     if (stat (unix_addr.sun_path, &statbuf) < 0) {
         LOG_ERR ("Failed `stat` in us_accept: %s\n", strerror (errno));
@@ -165,7 +169,7 @@ static int us_accept (int listenfd, pid_t *pidptr, uid_t *uidptr)
     pid_str++;
 
     *pidptr = atoi (pid_str);
-    
+
     unlink (unix_addr.sun_path);        /* we're done with pathname now */
     return (clifd);
 
@@ -222,8 +226,10 @@ us_handle_accept (USServer* server)
     server->nr_clients++;
 
     if (server->nr_clients > MAX_CLIENTS_EACH) {
-        LOG_WARN ("Too many clients (maximal clients allowed: %d)\n", MAX_CLIENTS_EACH);
-        server->on_error (server, (SockClient *)usc, PCRDR_SC_SERVICE_UNAVAILABLE);
+        LOG_WARN ("Too many clients (maximal clients allowed: %d)\n",
+                MAX_CLIENTS_EACH);
+        server->on_error (server, (SockClient *)usc,
+                PCRDR_SC_SERVICE_UNAVAILABLE);
         goto cleanup;
     }
 
@@ -266,7 +272,8 @@ static void us_clear_pending_data (USClient *client)
 
     client->sz_pending = 0;
 
-    update_upper_entity_stats (client->entity, client->sz_pending, client->sz_packet);
+    update_upper_entity_stats (client->entity, client->sz_pending,
+            client->sz_packet);
 }
 
 /*
