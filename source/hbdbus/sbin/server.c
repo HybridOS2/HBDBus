@@ -120,9 +120,9 @@ srv_set_config_sslkey (const char *sslkey)
 }
 
 /* *INDENT-OFF* */
-static char short_options[] = "adwbp:Vh";
+static char short_options[] = "adWbp:Vh";
 static struct option long_opts[] = {
-    {"without-websocket", no_argument     , 0 , 'w' } ,
+    {"without-websocket", no_argument     , 0 , 'W' } ,
     {"port"           , required_argument , 0 , 'p' } ,
     {"addr"           , required_argument , 0 ,  0  } ,
     {"max-frame-size" , required_argument , 0 ,  0  } ,
@@ -151,7 +151,7 @@ cmd_help (void)
             ""
             "  -d                       - Run as a daemon.\n"
             "  -a --with-access-log     - Logging the verbose socket access info.\n"
-            "  -w --without-websocket   - Disable WebSocket.\n"
+            "  -W --without-websocket   - Disable WebSocket.\n"
             "  --unixsocket=<path>      - Specify the path of the Unix socket.\n"
             "  --origin=<origin>        - Ensure clients send the specified origin\n"
             "                             header upon the WebSocket handshake.\n"
@@ -263,7 +263,7 @@ read_option_args(int argc, char **argv, int *daemon)
             case 'd':
                 *daemon = 1;
                 break;
-            case 'w':
+            case 'W':
                 srv_set_config_websocket (0);
                 break;
             case 'a':
