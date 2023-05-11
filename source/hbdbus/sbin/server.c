@@ -120,7 +120,7 @@ srv_set_config_sslkey (const char *sslkey)
 }
 
 /* *INDENT-OFF* */
-static char short_options[] = "adwbp:vh";
+static char short_options[] = "adwbp:Vh";
 static struct option long_opts[] = {
     {"without-websocket", no_argument     , 0 , 'w' } ,
     {"port"           , required_argument , 0 , 'p' } ,
@@ -133,7 +133,7 @@ static struct option long_opts[] = {
     {"ssl-key"        , required_argument , 0 ,  0  } ,
 #endif
     {"with-access-log", no_argument       , 0 , 'a' } ,
-    {"version"        , no_argument       , 0 , 'v' } ,
+    {"version"        , no_argument       , 0 , 'V' } ,
     {"help"           , no_argument       , 0 , 'h' } ,
     {0, 0, 0, 0}
 };
@@ -279,11 +279,11 @@ read_option_args(int argc, char **argv, int *daemon)
                 fprintf (stdout, "HBDBusD: %s\n", HBDBUS_VERSION_STRING);
                 return 1;
             case 0:
-                parse_long_opt (long_opts[idx].name, optarg);
+                parse_long_opt(long_opts[idx].name, optarg);
                 break;
             case '?':
-                cmd_help ();
-                return 1;
+                fprintf(stderr, "Run with the option `-h` for usage.\n");
+                return -1;
             default:
                 goto bad_arg;
         }

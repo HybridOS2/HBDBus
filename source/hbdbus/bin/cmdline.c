@@ -1540,7 +1540,7 @@ static int read_option_args (int argc, char **argv)
 {
     int o, idx = 0;
 
-    while ((o = getopt_long (argc, argv, short_options, long_opts, &idx)) >= 0) {
+    while ((o = getopt_long(argc, argv, short_options, long_opts, &idx)) >= 0) {
         if (-1 == o || EOF == o)
             break;
         switch (o) {
@@ -1559,8 +1559,8 @@ static int read_option_args (int argc, char **argv)
                     strcpy (the_client.runner_name, optarg);
                 break;
             case '?':
-                print_usage ();
-                return 1;
+                fprintf(stderr, "Run with the option `-h` for usage.\n");
+                return -1;
             default:
                 goto bad_arg;
         }
@@ -1573,7 +1573,7 @@ static int read_option_args (int argc, char **argv)
     return 0;
 
 bad_arg:
-    fprintf(stderr, "Bad command line arguments."
+    fprintf(stderr, "Bad command line option."
             "Please run with the option `-h` for usage.\n");
     return -1;
 }
