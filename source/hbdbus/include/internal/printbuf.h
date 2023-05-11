@@ -17,8 +17,8 @@
  *        json_object_set_serializer() direct use of this is not
  *        recommended.
  */
-#ifndef _HBDBUS_SBIN_PRINTBUF_H_
-#define _HBDBUS_SBIN_PRINTBUF_H_
+#ifndef _HBDBUS_INTERNAL_PRINTBUF_H_
+#define _HBDBUS_INTERNAL_PRINTBUF_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,5 +126,5 @@ void printbuf_free(struct printbuf *p);
 }
 #endif
 
-#endif  /* not defined _HBDBUS_SBIN_PRINTBUF_H_ */
+#endif  /* not defined _HBDBUS_INTERNAL_PRINTBUF_H_ */
 
