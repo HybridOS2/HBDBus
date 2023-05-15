@@ -24,8 +24,9 @@
 #include <string.h>
 #include <assert.h>
 
+#include <purc/purc-helpers.h>
+
 #include "internal/log.h"
-#include "internal/printbuf.h"
 
 #include "hbdbus.h"
 #include "endpoint.h"
@@ -448,7 +449,7 @@ builtin_method_list_endpoints (BusServer *bus_srv,
     (void)to;
     (void)method_name;
     (void)method_param;
-    struct printbuf my_buff, *pb = &my_buff;
+    struct pcutils_printbuf my_buff, *pb = &my_buff;
     const char *endpoint_name;
     void *data;
     int nr_endpoints;
@@ -457,12 +458,12 @@ builtin_method_list_endpoints (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listEndpoints") == 0);
 
-    if (printbuf_init (pb)) {
+    if (pcutils_printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
         return NULL;
     }
 
-    printbuf_strappend (pb, "[");
+    pcutils_printbuf_strappend (pb, "[");
 
     nr_endpoints = 0;
     kvlist_for_each (&bus_srv->endpoint_list, endpoint_name, data) {
@@ -471,40 +472,40 @@ builtin_method_list_endpoints (BusServer *bus_srv,
         BusEndpoint* endpoint = *(BusEndpoint **)data;
         int n;
 
-        printbuf_strappend (pb, "{\"endpointName\":");
-        sprintbuf (pb, "\"%s\",", endpoint_name);
-        sprintbuf (pb, "\"livingSeconds\":%lu,",
+        pcutils_printbuf_strappend (pb, "{\"endpointName\":");
+        pcutils_printbuf_format (pb, "\"%s\",", endpoint_name);
+        pcutils_printbuf_format (pb, "\"livingSeconds\":%lu,",
                 purc_get_monotoic_time () - endpoint->t_created);
 
         n = 0;
-        printbuf_strappend (pb, "\"methods\":[");
+        pcutils_printbuf_strappend (pb, "\"methods\":[");
         kvlist_for_each (&endpoint->method_list, sub_name, sub_data) {
-            sprintbuf (pb, "\"%s\",", sub_name);
+            pcutils_printbuf_format (pb, "\"%s\",", sub_name);
             n++;
         }
         if (n > 0)
-            printbuf_shrink (pb, 1);
-        printbuf_strappend (pb, "],");
+            pcutils_printbuf_shrink (pb, 1);
+        pcutils_printbuf_strappend (pb, "],");
 
         n = 0;
-        printbuf_strappend (pb, "\"bubbles\":[");
+        pcutils_printbuf_strappend (pb, "\"bubbles\":[");
         kvlist_for_each (&endpoint->bubble_list, sub_name, sub_data) {
-            sprintbuf (pb, "\"%s\",", sub_name);
+            pcutils_printbuf_format (pb, "\"%s\",", sub_name);
             n++;
         }
         if (n > 0)
-            printbuf_shrink (pb, 1);
-        printbuf_strappend (pb, "],");
+            pcutils_printbuf_shrink (pb, 1);
+        pcutils_printbuf_strappend (pb, "],");
 
-        sprintbuf (pb, "\"memUsed\":%lu,", endpoint->entity.sz_sock_mem);
-        sprintbuf (pb, "\"peakMemUsed\":%lu", endpoint->entity.peak_sz_sock_mem);
-        printbuf_strappend (pb, "},");
+        pcutils_printbuf_format (pb, "\"memUsed\":%lu,", endpoint->entity.sz_sock_mem);
+        pcutils_printbuf_format (pb, "\"peakMemUsed\":%lu", endpoint->entity.peak_sz_sock_mem);
+        pcutils_printbuf_strappend (pb, "},");
         nr_endpoints++;
     }
     if (nr_endpoints)
-        printbuf_shrink (pb, 1);
+        pcutils_printbuf_shrink (pb, 1);
 
-    printbuf_strappend (pb, "]");
+    pcutils_printbuf_strappend (pb, "]");
 
     *ret_code = PCRDR_SC_OK;
     return pb->buf;
@@ -520,7 +521,7 @@ builtin_method_list_procedures (BusServer *bus_srv,
     (void)to;
     (void)method_name;
     (void)method_param;
-    struct printbuf my_buff, *pb = &my_buff;
+    struct pcutils_printbuf my_buff, *pb = &my_buff;
     const char *endpoint_name;
     void *data;
     int n;
@@ -529,13 +530,13 @@ builtin_method_list_procedures (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listProcedures") == 0);
 
-    if (printbuf_init (pb)) {
+    if (pcutils_printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
         return NULL;
     }
 
     n = 0;
-    printbuf_strappend (pb, "[");
+    pcutils_printbuf_strappend (pb, "[");
     if (purc_is_valid_endpoint_name (method_param)) {
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
@@ -548,10 +549,10 @@ builtin_method_list_procedures (BusServer *bus_srv,
             BusEndpoint* endpoint = *(BusEndpoint **)data;
             int nr_methods = 0;
 
-            printbuf_strappend (pb, "{\"endpointName\":");
-            sprintbuf (pb, "\"%s\",", normalized_name);
+            pcutils_printbuf_strappend (pb, "{\"endpointName\":");
+            pcutils_printbuf_format (pb, "\"%s\",", normalized_name);
 
-            printbuf_strappend (pb, "\"methods\": [");
+            pcutils_printbuf_strappend (pb, "\"methods\": [");
             kvlist_for_each (&endpoint->method_list, method_name, sub_data) {
                 MethodInfo *method_info = *(MethodInfo **)sub_data;
 
@@ -560,18 +561,18 @@ builtin_method_list_procedures (BusServer *bus_srv,
                         match_pattern (&method_info->app_patt_list, from->app_name,
                             1, HBDBUS_PATTERN_VAR_OWNER, endpoint->app_name)) {
 
-                    printbuf_strappend (pb, "\"");
-                    printbuf_memappend (pb, method_name, 0);
-                    printbuf_strappend (pb, "\",");
+                    pcutils_printbuf_strappend (pb, "\"");
+                    pcutils_printbuf_memappend (pb, method_name, 0);
+                    pcutils_printbuf_strappend (pb, "\",");
 
                     nr_methods++;
                 }
             }
 
             if (nr_methods > 0) {
-                printbuf_shrink (pb, 1);
+                pcutils_printbuf_shrink (pb, 1);
             }
-            printbuf_strappend (pb, "]}");
+            pcutils_printbuf_strappend (pb, "]}");
         }
     }
     else {
@@ -581,10 +582,10 @@ builtin_method_list_procedures (BusServer *bus_srv,
             BusEndpoint* endpoint = *(BusEndpoint **)data;
             int nr_methods = 0;
 
-            printbuf_strappend (pb, "{\"endpointName\":");
-            sprintbuf (pb, "\"%s\",", endpoint_name);
+            pcutils_printbuf_strappend (pb, "{\"endpointName\":");
+            pcutils_printbuf_format (pb, "\"%s\",", endpoint_name);
 
-            printbuf_strappend (pb, "\"methods\": [");
+            pcutils_printbuf_strappend (pb, "\"methods\": [");
             kvlist_for_each (&endpoint->method_list, method_name, sub_data) {
                 MethodInfo *method_info = *(MethodInfo **)sub_data;
 
@@ -593,27 +594,27 @@ builtin_method_list_procedures (BusServer *bus_srv,
                         match_pattern (&method_info->app_patt_list, from->app_name,
                             1, HBDBUS_PATTERN_VAR_OWNER, endpoint->app_name)) {
 
-                    printbuf_strappend (pb, "\"");
-                    printbuf_memappend (pb, method_name, 0);
-                    printbuf_strappend (pb, "\",");
+                    pcutils_printbuf_strappend (pb, "\"");
+                    pcutils_printbuf_memappend (pb, method_name, 0);
+                    pcutils_printbuf_strappend (pb, "\",");
 
                     nr_methods++;
                 }
             }
 
             if (nr_methods > 0) {
-                printbuf_shrink (pb, 1);
+                pcutils_printbuf_shrink (pb, 1);
             }
-            printbuf_strappend (pb, "]},");
+            pcutils_printbuf_strappend (pb, "]},");
 
             n++;
         }
     }
 
     if (n > 0) {
-        printbuf_shrink (pb, 1);
+        pcutils_printbuf_shrink (pb, 1);
     }
-    printbuf_strappend (pb, "]");
+    pcutils_printbuf_strappend (pb, "]");
 
     *ret_code = PCRDR_SC_OK;
     return pb->buf;
@@ -629,7 +630,7 @@ builtin_method_list_events (BusServer *bus_srv,
     (void)to;
     (void)method_name;
     (void)method_param;
-    struct printbuf my_buff, *pb = &my_buff;
+    struct pcutils_printbuf my_buff, *pb = &my_buff;
     const char *endpoint_name;
     void *data;
     int n;
@@ -638,13 +639,13 @@ builtin_method_list_events (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listEvents") == 0);
 
-    if (printbuf_init (pb)) {
+    if (pcutils_printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
         return NULL;
     }
 
     n = 0;
-    printbuf_strappend (pb, "[");
+    pcutils_printbuf_strappend (pb, "[");
     if (purc_is_valid_endpoint_name (method_param)) {
         char normalized_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
@@ -657,10 +658,10 @@ builtin_method_list_events (BusServer *bus_srv,
             BusEndpoint* endpoint = *(BusEndpoint **)data;
             int nr_methods = 0;
 
-            printbuf_strappend (pb, "{\"endpointName\":");
-            sprintbuf (pb, "\"%s\",", normalized_name);
+            pcutils_printbuf_strappend (pb, "{\"endpointName\":");
+            pcutils_printbuf_format (pb, "\"%s\",", normalized_name);
 
-            printbuf_strappend (pb, "\"bubbles\": [");
+            pcutils_printbuf_strappend (pb, "\"bubbles\": [");
             kvlist_for_each (&endpoint->bubble_list, bubble_name, sub_data) {
                 BubbleInfo *bubble_info = *(BubbleInfo **)sub_data;
 
@@ -669,18 +670,18 @@ builtin_method_list_events (BusServer *bus_srv,
                         match_pattern (&bubble_info->app_patt_list, from->app_name,
                             1, HBDBUS_PATTERN_VAR_OWNER, endpoint->app_name)) {
 
-                    printbuf_strappend (pb, "\"");
-                    printbuf_memappend (pb, bubble_name, 0);
-                    printbuf_strappend (pb, "\",");
+                    pcutils_printbuf_strappend (pb, "\"");
+                    pcutils_printbuf_memappend (pb, bubble_name, 0);
+                    pcutils_printbuf_strappend (pb, "\",");
 
                     nr_methods++;
                 }
             }
 
             if (nr_methods > 0) {
-                printbuf_shrink (pb, 1);
+                pcutils_printbuf_shrink (pb, 1);
             }
-            printbuf_strappend (pb, "]}");
+            pcutils_printbuf_strappend (pb, "]}");
         }
     }
     else {
@@ -690,10 +691,10 @@ builtin_method_list_events (BusServer *bus_srv,
             BusEndpoint* endpoint = *(BusEndpoint **)data;
             int nr_methods = 0;
 
-            printbuf_strappend (pb, "{\"endpointName\":");
-            sprintbuf (pb, "\"%s\",", endpoint_name);
+            pcutils_printbuf_strappend (pb, "{\"endpointName\":");
+            pcutils_printbuf_format (pb, "\"%s\",", endpoint_name);
 
-            printbuf_strappend (pb, "\"bubbles\": [");
+            pcutils_printbuf_strappend (pb, "\"bubbles\": [");
             kvlist_for_each (&endpoint->bubble_list, bubble_name, sub_data) {
                 BubbleInfo *bubble_info = *(BubbleInfo **)sub_data;
 
@@ -702,27 +703,27 @@ builtin_method_list_events (BusServer *bus_srv,
                         match_pattern (&bubble_info->app_patt_list, from->app_name,
                             1, HBDBUS_PATTERN_VAR_OWNER, endpoint->app_name)) {
 
-                    printbuf_strappend (pb, "\"");
-                    printbuf_memappend (pb, bubble_name, 0);
-                    printbuf_strappend (pb, "\",");
+                    pcutils_printbuf_strappend (pb, "\"");
+                    pcutils_printbuf_memappend (pb, bubble_name, 0);
+                    pcutils_printbuf_strappend (pb, "\",");
 
                     nr_methods++;
                 }
             }
 
             if (nr_methods > 0) {
-                printbuf_shrink (pb, 1);
+                pcutils_printbuf_shrink (pb, 1);
             }
-            printbuf_strappend (pb, "]},");
+            pcutils_printbuf_strappend (pb, "]},");
 
             n++;
         }
     }
 
     if (n > 0) {
-        printbuf_shrink (pb, 1);
+        pcutils_printbuf_shrink (pb, 1);
     }
-    printbuf_strappend (pb, "]");
+    pcutils_printbuf_strappend (pb, "]");
 
     *ret_code = PCRDR_SC_OK;
     return pb->buf;
@@ -747,9 +748,9 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listEventSubscribers") == 0);
 
-    struct printbuf my_buff, *pb = &my_buff;
+    struct pcutils_printbuf my_buff, *pb = &my_buff;
 
-    if (printbuf_init (pb)) {
+    if (pcutils_printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
         return NULL;
     }
@@ -799,25 +800,25 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
         void* data;
         int n;
 
-        printbuf_strappend (pb, "[");
+        pcutils_printbuf_strappend (pb, "[");
 
         n = 0;
         kvlist_for_each (&bubble->subscriber_list, name, data) {
             void *sub_data = kvlist_get (&bus_srv->endpoint_list, name);
 
             if (sub_data) {
-                printbuf_strappend (pb, "\"");
-                printbuf_memappend (pb, name, 0);
-                printbuf_strappend (pb, "\",");
+                pcutils_printbuf_strappend (pb, "\"");
+                pcutils_printbuf_memappend (pb, name, 0);
+                pcutils_printbuf_strappend (pb, "\",");
             }
 
             n++;
         }
         if (n > 0) {
-            printbuf_shrink (pb, 1);
+            pcutils_printbuf_shrink (pb, 1);
         }
 
-        printbuf_strappend (pb, "]");
+        pcutils_printbuf_strappend (pb, "]");
 
         *ret_code = PCRDR_SC_OK;
         return pb->buf;

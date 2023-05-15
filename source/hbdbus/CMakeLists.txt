@@ -104,7 +104,6 @@ list(APPEND hbdbusd_SOURCES
     "${HBDBUS_DIR}/common/kvlist.c"
     "${HBDBUS_DIR}/common/avl.c"
     "${HBDBUS_DIR}/common/avl-cmp.c"
-    "${HBDBUS_DIR}/common/printbuf.c"
     "${HBDBUS_DIR}/common/sign_verify_rsa_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_hmac_sha256.c"
     "${HBDBUS_DIR}/common/sign_verify_dummy.c"
