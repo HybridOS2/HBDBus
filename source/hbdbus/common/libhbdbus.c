@@ -517,7 +517,7 @@ static int check_auth_result (hbdbus_conn* conn)
     else if (retval == JPT_AUTH_PASSED) {
         LOG_WARN ("Passed the authentication\n");
         err_code = on_auth_passed (conn, jo);
-        LOG_ERR ("return value of on_auth_passed: %d\n", retval);
+        LOG_INFO ("return value of on_auth_passed: %d\n", retval);
     }
     else if (retval == JPT_AUTH_FAILED) {
         LOG_WARN ("Failed the authentication\n");
