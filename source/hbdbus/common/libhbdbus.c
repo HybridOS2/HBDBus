@@ -142,20 +142,20 @@ static char* read_text_payload_from_us (int fd, int* len)
             payload = malloc (header.sz_payload + 1);
         }
         else {
-            LOG_WARN ("Bad payload type (%d) and length (%d)\n",
+            HLOG_WARN ("Bad payload type (%d) and length (%d)\n",
                     header.op, header.sz_payload);
             return NULL;  /* must not the challenge code */
         }
     }
 
     if (payload == NULL) {
-        LOG_ERR ("Failed to allocate memory for payload.\n");
+        HLOG_ERR ("Failed to allocate memory for payload.\n");
         return NULL;
     }
     else {
         n = read (fd, payload, header.sz_payload);
         if (n < header.sz_payload) {
-            LOG_ERR ("Failed to read payload.\n");
+            HLOG_ERR ("Failed to read payload.\n");
             goto failed;
         }
 
@@ -204,7 +204,7 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
             int prot_ver = 0, ret_code = 0;
             const char *ret_msg = HBDBUS_NOT_AVAILABLE, *extra_msg = HBDBUS_NOT_AVAILABLE;
 
-            LOG_WARN ("Refued by server:\n");
+            HLOG_WARN ("Refued by server:\n");
             if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "protocolName"))) {
                 prot_name = purc_variant_get_string_const(jo_tmp);
             }
@@ -212,7 +212,7 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
             if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "protocolVersion"))) {
                 purc_variant_cast_to_int32(jo_tmp, &prot_ver, true);
             }
-            LOG_WARN ("  Protocol: %s/%d\n", prot_name, prot_ver);
+            HLOG_WARN ("  Protocol: %s/%d\n", prot_name, prot_ver);
 
             if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "retCode"))) {
                 purc_variant_cast_to_int32(jo_tmp, &ret_code, true);
@@ -223,7 +223,7 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
             if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "extraMsg"))) {
                 extra_msg = purc_variant_get_string_const(jo_tmp);
             }
-            LOG_WARN ("  Error Info: %d (%s): %s\n", ret_code, ret_msg, extra_msg);
+            HLOG_WARN ("  Error Info: %d (%s): %s\n", ret_code, ret_msg, extra_msg);
 
             err_code = HBDBUS_EC_SERVER_REFUSED;
             goto failed;
@@ -244,20 +244,20 @@ static int get_challenge_code (hbdbus_conn *conn, char **challenge)
             }
 
             if (ch_code == NULL) {
-                LOG_WARN ("Null challenge code\n");
+                HLOG_WARN ("Null challenge code\n");
                 err_code = HBDBUS_EC_BAD_PACKET;
                 goto failed;
             }
             else if (strcasecmp (prot_name, HBDBUS_PROTOCOL_NAME) ||
                     prot_ver < HBDBUS_PROTOCOL_VERSION) {
-                LOG_WARN ("Protocol not matched: %s/%d\n", prot_name, prot_ver);
+                HLOG_WARN ("Protocol not matched: %s/%d\n", prot_name, prot_ver);
                 err_code = HBDBUS_EC_PROTOCOL;
                 goto failed;
             }
         }
     }
     else {
-        LOG_WARN ("No packetType field\n");
+        HLOG_WARN ("No packetType field\n");
         err_code = HBDBUS_EC_BAD_PACKET;
         goto failed;
     }
@@ -325,13 +325,13 @@ static int send_auth_info (hbdbus_conn *conn, const char* ch_code)
         goto failed;
     }
     else if ((size_t)n >= sizeof (buff)) {
-        LOG_ERR ("Too small buffer for signature (%s) in send_auth_info.\n", enc_sig);
+        HLOG_ERR ("Too small buffer for signature (%s) in send_auth_info.\n", enc_sig);
         err_code = HBDBUS_EC_TOO_SMALL_BUFF;
         goto failed;
     }
 
     if (hbdbus_send_text_packet (conn, buff, n)) {
-        LOG_ERR ("Failed to send text packet to HBDBus server in send_auth_info.\n");
+        HLOG_ERR ("Failed to send text packet to HBDBus server in send_auth_info.\n");
         err_code = HBDBUS_EC_IO;
         goto failed;
     }
@@ -360,7 +360,7 @@ static void on_lost_event_generator (hbdbus_conn* conn,
 
     jo = purc_variant_make_from_json_string(bubble_data, strlen(bubble_data));
     if (jo == NULL) {
-        LOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTGENERATOR`\n");
+        HLOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTGENERATOR`\n");
         return;
     }
 
@@ -368,7 +368,7 @@ static void on_lost_event_generator (hbdbus_conn* conn,
             (endpoint_name = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        LOG_ERR ("Fatal error: no endpointName field in the packet!\n");
+        HLOG_ERR ("Fatal error: no endpointName field in the packet!\n");
         return;
     }
 
@@ -376,7 +376,7 @@ static void on_lost_event_generator (hbdbus_conn* conn,
         const char* end_of_endpoint = strrchr(event_name, '/');
 
         if (strncasecmp(event_name, endpoint_name, end_of_endpoint - event_name) == 0) {
-            LOG_INFO ("Matched an event (%s) in subscribed events for %s\n",
+            HLOG_INFO ("Matched an event (%s) in subscribed events for %s\n",
                     event_name, endpoint_name);
 
             kvlist_delete(&conn->subscribed_list, event_name);
@@ -398,7 +398,7 @@ static void on_lost_event_bubble (hbdbus_conn* conn,
 
     jo = purc_variant_make_from_json_string(bubble_data, strlen(bubble_data));
     if (jo == NULL) {
-        LOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTBUBBLE`\n");
+        HLOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTBUBBLE`\n");
         return;
     }
 
@@ -406,7 +406,7 @@ static void on_lost_event_bubble (hbdbus_conn* conn,
             (endpoint_name = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        LOG_ERR ("Fatal error: no endpointName in the packet!\n");
+        HLOG_ERR ("Fatal error: no endpointName in the packet!\n");
         return;
     }
 
@@ -414,7 +414,7 @@ static void on_lost_event_bubble (hbdbus_conn* conn,
             (bubble_name = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        LOG_ERR ("Fatal error: no bubbleName in the packet!\n");
+        HLOG_ERR ("Fatal error: no bubbleName in the packet!\n");
         return;
     }
 
@@ -446,7 +446,7 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
         conn->srv_host_name = strdup (srv_host_name);
     }
     else {
-        LOG_ERR ("Fatal error: no serverHostName in authPassed packet!\n");
+        HLOG_ERR ("Fatal error: no serverHostName in authPassed packet!\n");
         return HBDBUS_EC_PROTOCOL;
     }
 
@@ -458,7 +458,7 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
         conn->own_host_name = strdup (own_host_name);
     }
     else {
-        LOG_ERR ("Fatal error: no reassignedHostName in authPassed packet!\n");
+        HLOG_ERR ("Fatal error: no reassignedHostName in authPassed packet!\n");
         return HBDBUS_EC_PROTOCOL;
     }
 
@@ -470,7 +470,7 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
 
     event_handler = on_lost_event_generator;
     if (!kvlist_set (&conn->subscribed_list, event_name, &event_handler)) {
-        LOG_ERR ("Failed to register callback for system event `LOSTEVENTGENERATOR`!\n");
+        HLOG_ERR ("Failed to register callback for system event `LOSTEVENTGENERATOR`!\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
@@ -482,7 +482,7 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
 
     event_handler = on_lost_event_bubble;
     if (!kvlist_set (&conn->subscribed_list, event_name, &event_handler)) {
-        LOG_ERR ("Failed to register callback for system event `LOSTEVENTBUBBLE`!\n");
+        HLOG_ERR ("Failed to register callback for system event `LOSTEVENTBUBBLE`!\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
@@ -498,12 +498,12 @@ static int check_auth_result (hbdbus_conn* conn)
 
     err_code = hbdbus_read_packet_alloc (conn, &packet, &data_len);
     if (err_code) {
-        LOG_ERR ("Failed to read packet\n");
+        HLOG_ERR ("Failed to read packet\n");
         return err_code;
     }
 
     if (data_len == 0) {
-        LOG_ERR ("Unexpected\n");
+        HLOG_ERR ("Unexpected\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
@@ -511,24 +511,24 @@ static int check_auth_result (hbdbus_conn* conn)
     free (packet);
 
     if (retval < 0) {
-        LOG_ERR ("Failed to parse JSON packet\n");
+        HLOG_ERR ("Failed to parse JSON packet\n");
         err_code = HBDBUS_EC_BAD_PACKET;
     }
     else if (retval == JPT_AUTH_PASSED) {
-        LOG_WARN ("Passed the authentication\n");
+        HLOG_WARN ("Passed the authentication\n");
         err_code = on_auth_passed (conn, jo);
-        LOG_INFO ("return value of on_auth_passed: %d\n", retval);
+        HLOG_INFO ("return value of on_auth_passed: %d\n", retval);
     }
     else if (retval == JPT_AUTH_FAILED) {
-        LOG_WARN ("Failed the authentication\n");
+        HLOG_WARN ("Failed the authentication\n");
         err_code = HBDBUS_EC_AUTH_FAILED;
     }
     else if (retval == JPT_ERROR) {
-        LOG_WARN ("Got an error\n");
+        HLOG_WARN ("Got an error\n");
         err_code = HBDBUS_EC_SERVER_REFUSED;
     }
     else {
-        LOG_WARN ("Got an unexpected packet: %d\n", retval);
+        HLOG_WARN ("Got an unexpected packet: %d\n", retval);
         err_code = HBDBUS_EC_UNEXPECTED;
     }
 
@@ -549,14 +549,14 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
     char *ch_code = NULL;
 
     if ((*conn = calloc (1, sizeof (hbdbus_conn))) == NULL) {
-        LOG_ERR ("Failed to callocate space for connection: %s\n",
+        HLOG_ERR ("Failed to callocate space for connection: %s\n",
                 strerror (errno));
         return HBDBUS_EC_NOMEM;
     }
 
     /* create a Unix domain stream socket */
     if ((fd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        LOG_ERR ("Failed to call `socket` in hbdbus_connect_via_unix_socket: %s\n",
+        HLOG_ERR ("Failed to call `socket` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         return HBDBUS_EC_IO;
     }
@@ -582,12 +582,12 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
 
     unlink (unix_addr.sun_path);        /* in case it already exists */
     if (bind (fd, (struct sockaddr *) &unix_addr, len) < 0) {
-        LOG_ERR ("Failed to call `bind` in hbdbus_connect_via_unix_socket: %s\n",
+        HLOG_ERR ("Failed to call `bind` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         goto error;
     }
     if (chmod (unix_addr.sun_path, CLI_PERM) < 0) {
-        LOG_ERR ("Failed to call `chmod` in hbdbus_connect_via_unix_socket: %s\n",
+        HLOG_ERR ("Failed to call `chmod` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         goto error;
     }
@@ -599,7 +599,7 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
     len = sizeof (unix_addr.sun_family) + strlen (unix_addr.sun_path) + 1;
 
     if (connect (fd, (struct sockaddr *) &unix_addr, len) < 0) {
-        LOG_ERR ("Failed to call `connect` in hbdbus_connect_via_unix_socket: %s\n",
+        HLOG_ERR ("Failed to call `connect` in hbdbus_connect_via_unix_socket: %s\n",
                 strerror (errno));
         goto error;
     }
@@ -745,7 +745,7 @@ int hbdbus_disconnect (hbdbus_conn* conn)
         header.fragmented = 0;
         header.sz_payload = 0;
         if (conn_write (conn->fd, &header, sizeof (USFrameHeader))) {
-            LOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
+            HLOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
             err_code = HBDBUS_EC_IO;
         }
     }
@@ -771,7 +771,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
         USFrameHeader header;
 
         if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-            LOG_ERR ("Failed to read frame header from Unix socket\n");
+            HLOG_ERR ("Failed to read frame header from Unix socket\n");
             err_code = HBDBUS_EC_IO;
             goto done;
         }
@@ -792,7 +792,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             return 0;
         }
         else if (header.op == US_OPCODE_CLOSE) {
-            LOG_WARN ("Peer closed\n");
+            HLOG_WARN ("Peer closed\n");
             err_code = HBDBUS_EC_CLOSED;
             goto done;
         }
@@ -814,7 +814,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             }
 
             if (conn_read (conn->fd, packet_buf, header.sz_payload)) {
-                LOG_ERR ("Failed to read packet from Unix socket\n");
+                HLOG_ERR ("Failed to read packet from Unix socket\n");
                 err_code = HBDBUS_EC_IO;
                 goto done;
             }
@@ -827,20 +827,20 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             offset = header.sz_payload;
             while (left > 0) {
                 if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-                    LOG_ERR ("Failed to read frame header from Unix socket\n");
+                    HLOG_ERR ("Failed to read frame header from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
 
                 if (header.op != US_OPCODE_CONTINUATION &&
                         header.op != US_OPCODE_END) {
-                    LOG_ERR ("Not a continuation frame\n");
+                    HLOG_ERR ("Not a continuation frame\n");
                     err_code = HBDBUS_EC_PROTOCOL;
                     goto done;
                 }
 
                 if (conn_read (conn->fd, packet_buf + offset, header.sz_payload)) {
-                    LOG_ERR ("Failed to read packet from Unix socket\n");
+                    HLOG_ERR ("Failed to read packet from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
@@ -862,7 +862,7 @@ int hbdbus_read_packet (hbdbus_conn* conn, char *packet_buf, unsigned int *packe
             }
         }
         else {
-            LOG_ERR ("Bad packet op code: %d\n", header.op);
+            HLOG_ERR ("Bad packet op code: %d\n", header.op);
             err_code = HBDBUS_EC_PROTOCOL;
         }
     }
@@ -893,7 +893,7 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
         USFrameHeader header;
 
         if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-            LOG_ERR ("Failed to read frame header from Unix socket\n");
+            HLOG_ERR ("Failed to read frame header from Unix socket\n");
             err_code = HBDBUS_EC_IO;
             goto done;
         }
@@ -917,7 +917,7 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
             return 0;
         }
         else if (header.op == US_OPCODE_CLOSE) {
-            LOG_WARN ("Peer closed\n");
+            HLOG_WARN ("Peer closed\n");
             err_code = HBDBUS_EC_CLOSED;
             goto done;
         }
@@ -956,27 +956,27 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
             }
 
             if (conn_read (conn->fd, packet_buf, header.sz_payload)) {
-                LOG_ERR ("Failed to read packet from Unix socket\n");
+                HLOG_ERR ("Failed to read packet from Unix socket\n");
                 err_code = HBDBUS_EC_IO;
                 goto done;
             }
 
             while (left > 0) {
                 if (conn_read (conn->fd, &header, sizeof (USFrameHeader))) {
-                    LOG_ERR ("Failed to read frame header from Unix socket\n");
+                    HLOG_ERR ("Failed to read frame header from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
 
                 if (header.op != US_OPCODE_CONTINUATION &&
                         header.op != US_OPCODE_END) {
-                    LOG_ERR ("Not a continuation frame\n");
+                    HLOG_ERR ("Not a continuation frame\n");
                     err_code = HBDBUS_EC_PROTOCOL;
                     goto done;
                 }
 
                 if (conn_read (conn->fd, packet_buf + offset, header.sz_payload)) {
-                    LOG_ERR ("Failed to read packet from Unix socket\n");
+                    HLOG_ERR ("Failed to read packet from Unix socket\n");
                     err_code = HBDBUS_EC_IO;
                     goto done;
                 }
@@ -999,7 +999,7 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
             goto done;
         }
         else {
-            LOG_ERR ("Bad packet op code: %d\n", header.op);
+            HLOG_ERR ("Bad packet op code: %d\n", header.op);
             err_code = HBDBUS_EC_PROTOCOL;
             goto done;
         }
@@ -1093,7 +1093,7 @@ int hbdbus_ping_server (hbdbus_conn* conn)
         header.fragmented = 0;
         header.sz_payload = 0;
         if (conn_write (conn->fd, &header, sizeof (USFrameHeader))) {
-            LOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
+            HLOG_ERR ("Error when wirting to Unix Socket: %s\n", strerror (errno));
             err_code = HBDBUS_EC_IO;
         }
     }
@@ -1812,7 +1812,7 @@ static int dispatch_result_packet(hbdbus_conn* conn, const purc_variant_t jo)
             (result_id = purc_variant_get_string_const(jo_tmp))) {
     }
     else {
-        LOG_WARN ("No resultId\n");
+        HLOG_WARN ("No resultId\n");
     }
 
     if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "callId")) &&
@@ -1824,7 +1824,7 @@ static int dispatch_result_packet(hbdbus_conn* conn, const purc_variant_t jo)
 
     data = kvlist_get(&conn->call_list, call_id);
     if (data == NULL) {
-        LOG_ERR ("Not found result handler for callId: %s\n", call_id);
+        HLOG_ERR ("Not found result handler for callId: %s\n", call_id);
         return HBDBUS_EC_INVALID_VALUE;
     }
 
@@ -1955,14 +1955,14 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
         retval = select (conn->fd + 1, &rfds, NULL, NULL, &tv);
 
         if (retval == -1) {
-            LOG_ERR ("Failed to call select(): %s\n", strerror (errno));
+            HLOG_ERR ("Failed to call select(): %s\n", strerror (errno));
             err_code = HBDBUS_EC_BAD_SYSTEM_CALL;
         }
         else if (retval) {
             err_code = hbdbus_read_packet_alloc (conn, &packet, &data_len);
 
             if (err_code) {
-                LOG_ERR ("Failed to read packet\n");
+                HLOG_ERR ("Failed to read packet\n");
                 break;
             }
 
@@ -1973,7 +1973,7 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
             free (packet);
 
             if (retval < 0) {
-                LOG_ERR ("Failed to parse JSON packet;\n");
+                HLOG_ERR ("Failed to parse JSON packet;\n");
                 err_code = HBDBUS_EC_BAD_PACKET;
             }
             else if (retval == JPT_RESULT) {
@@ -2039,7 +2039,7 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
                 }
             }
             else if (retval == JPT_AUTH) {
-                LOG_WARN ("Should not be here for packetType `auth`\n");
+                HLOG_WARN ("Should not be here for packetType `auth`\n");
                 err_code = 0;
             }
             else if (retval == JPT_CALL) {
@@ -2055,15 +2055,15 @@ static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
                 err_code = 0;
             }
             else if (retval == JPT_AUTH_PASSED) {
-                LOG_WARN ("Unexpected authPassed packet\n");
+                HLOG_WARN ("Unexpected authPassed packet\n");
                 err_code = HBDBUS_EC_UNEXPECTED;
             }
             else if (retval == JPT_AUTH_FAILED) {
-                LOG_WARN ("Unexpected authFailed packet\n");
+                HLOG_WARN ("Unexpected authFailed packet\n");
                 err_code = HBDBUS_EC_UNEXPECTED;
             }
             else {
-                LOG_ERR ("Unknown packet type; quit...\n");
+                HLOG_ERR ("Unknown packet type; quit...\n");
                 err_code = HBDBUS_EC_PROTOCOL;
             }
 
@@ -2091,7 +2091,7 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
 
     err_code = hbdbus_read_packet_alloc (conn, &packet, &data_len);
     if (err_code) {
-        LOG_ERR ("Failed to read packet\n");
+        HLOG_ERR ("Failed to read packet\n");
         goto done;
     }
 
@@ -2103,18 +2103,18 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
     free (packet);
 
     if (retval < 0) {
-        LOG_ERR ("Failed to parse JSON packet; quit...\n");
+        HLOG_ERR ("Failed to parse JSON packet; quit...\n");
         err_code = HBDBUS_EC_BAD_PACKET;
     }
     else if (retval == JPT_ERROR) {
-        LOG_ERR ("The server gives an error packet\n");
+        HLOG_ERR ("The server gives an error packet\n");
         if (conn->error_handler) {
             conn->error_handler (conn, jo);
         }
         err_code = HBDBUS_EC_SERVER_ERROR;
     }
     else if (retval == JPT_AUTH) {
-        LOG_WARN ("Should not be here for packetType `auth`; quit...\n");
+        HLOG_WARN ("Should not be here for packetType `auth`; quit...\n");
         err_code = HBDBUS_EC_UNEXPECTED;
     }
     else if (retval == JPT_CALL) {
@@ -2133,15 +2133,15 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
         err_code = 0;
     }
     else if (retval == JPT_AUTH_PASSED) {
-        LOG_WARN ("Unexpected authPassed packet\n");
+        HLOG_WARN ("Unexpected authPassed packet\n");
         err_code = HBDBUS_EC_UNEXPECTED;
     }
     else if (retval == JPT_AUTH_FAILED) {
-        LOG_WARN ("Unexpected authFailed packet\n");
+        HLOG_WARN ("Unexpected authFailed packet\n");
         err_code = HBDBUS_EC_UNEXPECTED;
     }
     else {
-        LOG_ERR ("Unknown packet type; quit...\n");
+        HLOG_ERR ("Unknown packet type; quit...\n");
         err_code = HBDBUS_EC_PROTOCOL;
     }
 

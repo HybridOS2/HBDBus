@@ -189,7 +189,7 @@ static void
 handle_signal_action (int sig_number)
 {
     if (sig_number == SIGINT) {
-        LOG_WARN ("SIGINT caught!\n");
+        HLOG_WARN ("SIGINT caught!\n");
 #if 1
         the_server.running = false;
 #else
@@ -201,7 +201,7 @@ handle_signal_action (int sig_number)
 #endif
     }
     else if (sig_number == SIGPIPE) {
-        LOG_WARN ("SIGPIPE caught!\n");
+        HLOG_WARN ("SIGPIPE caught!\n");
     }
 }
 
@@ -397,7 +397,7 @@ on_pending (void* sock_srv, SockClient* client)
     ev.events = EPOLLIN | EPOLLOUT;
     ev.data.ptr = client;
     if (epoll_ctl (the_server.epollfd, EPOLL_CTL_MOD, client->fd, &ev) == -1) {
-        LOG_ERR ("Failed epoll_ctl to the client fd (%d): %s\n",
+        HLOG_ERR ("Failed epoll_ctl to the client fd (%d): %s\n",
                 client->fd, strerror (errno));
         assert (0);
     }
@@ -410,7 +410,7 @@ on_close (void* sock_srv, SockClient* client)
 {
     (void)sock_srv;
     if (epoll_ctl (the_server.epollfd, EPOLL_CTL_DEL, client->fd, NULL) == -1) {
-        LOG_WARN ("Failed to call epoll_ctl to delete the client fd (%d): %s\n",
+        HLOG_WARN ("Failed to call epoll_ctl to delete the client fd (%d): %s\n",
                 client->fd, strerror (errno));
     }
 
@@ -421,13 +421,13 @@ on_close (void* sock_srv, SockClient* client)
         if (assemble_endpoint_name (endpoint, endpoint_name) > 0) {
             if (kvlist_delete (&the_server.endpoint_list, endpoint_name)) {
                 the_server.nr_endpoints--;
-                LOG_INFO ("An authenticated endpoint removed: %s (%p), %d endpoints left.\n",
+                HLOG_INFO ("An authenticated endpoint removed: %s (%p), %d endpoints left.\n",
                     endpoint_name, endpoint, the_server.nr_endpoints);
             }
         }
         else {
             remove_dangling_endpoint (&the_server, endpoint);
-            LOG_INFO ("An endpoint not authenticated removed: (%p), %d endpoints left.\n",
+            HLOG_INFO ("An endpoint not authenticated removed: (%p), %d endpoints left.\n",
                     endpoint, the_server.nr_endpoints);
         }
         del_endpoint (&the_server, endpoint, CDE_LOST_CONNECTION);
@@ -500,11 +500,11 @@ run_server (void)
 
     // create unix socket
     if ((us_listener = us_listen (the_server.us_srv)) < 0) {
-        LOG_ERR ("Unable to listen on Unix socket (%s)\n",
+        HLOG_ERR ("Unable to listen on Unix socket (%s)\n",
                 srvcfg.unixsocket);
         goto error;
     }
-    LOG_NOTE ("Listening on Unix Socket (%s)...\n", srvcfg.unixsocket);
+    HLOG_NOTE ("Listening on Unix Socket (%s)...\n", srvcfg.unixsocket);
 
     the_server.us_srv->on_accepted = on_accepted;
     the_server.us_srv->on_packet = on_packet;
@@ -516,10 +516,10 @@ run_server (void)
     if (the_server.ws_srv) {
 #if HAVE(OPENSSL)
         if (srvcfg.sslcert && srvcfg.sslkey) {
-            LOG_NOTE ("==Using TLS/SSL==\n");
+            HLOG_NOTE ("==Using TLS/SSL==\n");
             srvcfg.use_ssl = 1;
             if (ws_initialize_ssl_ctx (the_server.ws_srv)) {
-                LOG_ERR ("Unable to initialize_ssl_ctx\n");
+                HLOG_ERR ("Unable to initialize_ssl_ctx\n");
                 goto error;
             }
         }
@@ -528,7 +528,7 @@ run_server (void)
 #endif
 
         if ((ws_listener = ws_listen (the_server.ws_srv)) < 0) {
-            LOG_ERR ("Unable to listen on Web socket (%s, %s)\n",
+            HLOG_ERR ("Unable to listen on Web socket (%s, %s)\n",
                     srvcfg.host, srvcfg.port);
             goto error;
         }
@@ -539,20 +539,20 @@ run_server (void)
         the_server.ws_srv->on_close = on_close;
         the_server.ws_srv->on_error = on_error;
 
-        LOG_NOTE ("Listening on Web Socket (%s, %s) %s SSL...\n",
+        HLOG_NOTE ("Listening on Web Socket (%s, %s) %s SSL...\n",
                 srvcfg.host, srvcfg.port, srvcfg.sslcert ? "with" : "without");
     }
 
     the_server.epollfd = epoll_create1 (EPOLL_CLOEXEC);
     if (the_server.epollfd == -1) {
-        LOG_ERR ("Failed to call epoll_create1: %s\n", strerror (errno));
+        HLOG_ERR ("Failed to call epoll_create1: %s\n", strerror (errno));
         goto error;
     }
 
     ev.events = EPOLLIN;
     ev.data.ptr = PTR_FOR_US_LISTENER;
     if (epoll_ctl (the_server.epollfd, EPOLL_CTL_ADD, us_listener, &ev) == -1) {
-        LOG_ERR ("Failed to call epoll_ctl with us_listener (%d): %s\n",
+        HLOG_ERR ("Failed to call epoll_ctl with us_listener (%d): %s\n",
                 us_listener, strerror (errno));
         goto error;
     }
@@ -561,7 +561,7 @@ run_server (void)
         ev.events = EPOLLIN;
         ev.data.ptr = PTR_FOR_WS_LISTENER;
         if (epoll_ctl (the_server.epollfd, EPOLL_CTL_ADD, ws_listener, &ev) == -1) {
-            LOG_ERR ("Failed to call epoll_ctl with ws_listener (%d): %s\n",
+            HLOG_ERR ("Failed to call epoll_ctl with ws_listener (%d): %s\n",
                     ws_listener, strerror (errno));
             goto error;
         }
@@ -576,7 +576,7 @@ run_server (void)
                 continue;
             }
 
-            LOG_ERR ("Failed to call epoll_wait: %s\n", strerror (errno));
+            HLOG_ERR ("Failed to call epoll_wait: %s\n", strerror (errno));
             goto error;
         }
         else if (nfds == 0) {
@@ -597,14 +597,14 @@ run_server (void)
             if (events[n].data.ptr == PTR_FOR_US_LISTENER) {
                 USClient * client = us_handle_accept (the_server.us_srv);
                 if (client == NULL) {
-                    LOG_NOTE ("Refused a client\n");
+                    HLOG_NOTE ("Refused a client\n");
                 }
                 else {
                     ev.events = EPOLLIN; /* do not use EPOLLET */
                     ev.data.ptr = client;
                     if (epoll_ctl (the_server.epollfd,
                                 EPOLL_CTL_ADD, client->fd, &ev) == -1) {
-                        LOG_ERR ("Failed epoll_ctl for connected unix socket (%d): %s\n",
+                        HLOG_ERR ("Failed epoll_ctl for connected unix socket (%d): %s\n",
                                 client->fd, strerror (errno));
                         goto error;
                     }
@@ -613,14 +613,14 @@ run_server (void)
             else if (events[n].data.ptr == PTR_FOR_WS_LISTENER) {
                 WSClient * client = ws_handle_accept (the_server.ws_srv, ws_listener);
                 if (client == NULL) {
-                    LOG_NOTE ("Refused a client\n");
+                    HLOG_NOTE ("Refused a client\n");
                 }
                 else {
                     ev.events = EPOLLIN; /* do not use EPOLLET */
                     ev.data.ptr = client;
                     if (epoll_ctl(the_server.epollfd,
                                 EPOLL_CTL_ADD, client->fd, &ev) == -1) {
-                        LOG_ERR ("Failed epoll_ctl for connected web socket (%d): %s\n",
+                        HLOG_ERR ("Failed epoll_ctl for connected web socket (%d): %s\n",
                                 client->fd, strerror (errno));
                         goto error;
                     }
@@ -649,7 +649,7 @@ run_server (void)
                             ev.data.ptr = usc;
                             if (epoll_ctl (the_server.epollfd,
                                         EPOLL_CTL_MOD, usc->fd, &ev) == -1) {
-                                LOG_ERR ("Failed epoll_ctl for unix socket (%d): %s\n",
+                                HLOG_ERR ("Failed epoll_ctl for unix socket (%d): %s\n",
                                         usc->fd, strerror (errno));
                                 goto error;
                             }
@@ -677,7 +677,7 @@ run_server (void)
                             ev.data.ptr = wsc;
                             if (epoll_ctl (the_server.epollfd,
                                         EPOLL_CTL_MOD, wsc->fd, &ev) == -1) {
-                                LOG_ERR ("Failed epoll_ctl for web socket (%d): %s\n",
+                                HLOG_ERR ("Failed epoll_ctl for web socket (%d): %s\n",
                                         usc->fd, strerror (errno));
                                 goto error;
                             }
@@ -685,7 +685,7 @@ run_server (void)
                     }
                 }
                 else {
-                    LOG_ERR ("Bad socket type (%d): %s\n",
+                    HLOG_ERR ("Bad socket type (%d): %s\n",
                             usc->ct, strerror (errno));
                     goto error;
                 }
@@ -750,7 +750,7 @@ init_bus_server (void)
     }
     the_server.nr_endpoints++;
 
-    LOG_INFO ("Builtin builtin stored: %s (%p)\n", endpoint_name, builtin);
+    HLOG_INFO ("Builtin builtin stored: %s (%p)\n", endpoint_name, builtin);
     return 0;
 }
 
@@ -777,7 +777,7 @@ cleanup_bus_server (void)
         endpoint = *(BusEndpoint **)data;
 
         if (endpoint->type != ET_BUILTIN) {
-            LOG_INFO ("Deleting endpoint: %s (%p) in cleanup_bus_server\n", name, endpoint);
+            HLOG_INFO ("Deleting endpoint: %s (%p) in cleanup_bus_server\n", name, endpoint);
 
             if (endpoint->type == ET_UNIX_SOCKET && endpoint->entity.client) {
                 // avoid a duplicated call of del_endpoint
@@ -796,7 +796,7 @@ cleanup_bus_server (void)
         }
     }
 
-    LOG_INFO ("Deleting builtin endpoint in cleanup_bus_server\n");
+    HLOG_INFO ("Deleting builtin endpoint in cleanup_bus_server\n");
     del_endpoint (&the_server, the_server.endpoint_builtin, CDE_EXITING);
     the_server.nr_endpoints--;
 
@@ -807,7 +807,7 @@ cleanup_bus_server (void)
 
         while (node) {
             endpoint = (BusEndpoint *)node->data;
-            LOG_WARN ("Removing dangling endpoint: %p, type (%d), status (%d)\n",
+            HLOG_WARN ("Removing dangling endpoint: %p, type (%d), status (%d)\n",
                     endpoint, endpoint->type, endpoint->status);
 
             if (endpoint->type == ET_UNIX_SOCKET) {
@@ -819,7 +819,7 @@ cleanup_bus_server (void)
                 ws_remove_dangling_client (the_server.ws_srv, wsc);
             }
             else {
-                LOG_WARN ("Bad type of dangling endpoint\n");
+                HLOG_WARN ("Bad type of dangling endpoint\n");
             }
 
             del_endpoint (&the_server, endpoint, CDE_EXITING);
@@ -836,7 +836,7 @@ cleanup_bus_server (void)
 
     free (the_server.server_name);
 
-    LOG_INFO ("the_server.nr_endpoints: %d\n", the_server.nr_endpoints);
+    HLOG_INFO ("the_server.nr_endpoints: %d\n", the_server.nr_endpoints);
     assert (the_server.nr_endpoints == 0);
 }
 
@@ -889,32 +889,32 @@ main (int argc, char **argv)
     setup_signals();
 
     if ((retval = init_bus_server ())) {
-        LOG_ERR ("Error during init_bus_server: %s\n",
+        HLOG_ERR ("Error during init_bus_server: %s\n",
                 pcrdr_get_ret_message (retval));
         goto error;
     }
 
     if ((the_server.us_srv = us_init (&srvcfg)) == NULL) {
-        LOG_ERR ("Error during us_init\n");
+        HLOG_ERR ("Error during us_init\n");
         goto error;
     }
 
     if (srvcfg.websocket) {
         if ((the_server.ws_srv = ws_init (&srvcfg)) == NULL) {
-            LOG_ERR ("Error during ws_init\n");
+            HLOG_ERR ("Error during ws_init\n");
             goto error;
         }
     }
     else {
         the_server.ws_srv = NULL;
-        LOG_NOTE ("Skip web socket\n");
+        HLOG_NOTE ("Skip web socket\n");
     }
 
     run_server ();
 
     cleanup_bus_server ();
 
-    LOG_NOTE ("Will exit normally.\n");
+    HLOG_NOTE ("Will exit normally.\n");
 
     purc_cleanup();
     return EXIT_SUCCESS;

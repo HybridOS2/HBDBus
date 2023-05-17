@@ -83,7 +83,7 @@ bool init_pattern_list (pattern_list *pl, const char* pattern)
                 one_pattern->var_name = strdup (token + 1);
             }
             else {
-                LOG_WARN ("Got a bad variable pattern: %s\n", token + 1);
+                HLOG_WARN ("Got a bad variable pattern: %s\n", token + 1);
                 free (one_pattern);
                 continue;
             }
@@ -92,7 +92,7 @@ bool init_pattern_list (pattern_list *pl, const char* pattern)
             one_pattern->type = PT_NOT_SPEC;
             one_pattern->not_spec = g_pattern_spec_new (token + 1);
             if (one_pattern->not_spec == NULL) {
-                LOG_WARN ("Failed to create a new spec for pattern: %s\n", token + 1);
+                HLOG_WARN ("Failed to create a new spec for pattern: %s\n", token + 1);
                 free (one_pattern);
                 continue;
             }
@@ -102,7 +102,7 @@ bool init_pattern_list (pattern_list *pl, const char* pattern)
             one_pattern->type = PT_SPEC;
             one_pattern->spec = g_pattern_spec_new (token);
             if (one_pattern->spec == NULL) {
-                LOG_WARN ("Failed to create a new not-spec for pattern: %s\n", token + 1);
+                HLOG_WARN ("Failed to create a new not-spec for pattern: %s\n", token + 1);
                 free (one_pattern);
                 continue;
             }
@@ -228,7 +228,7 @@ bool match_pattern (pattern_list *pl, const char* string,
                     goto success;
                 }
                 else {
-                    LOG_WARN ("Not found the real value for variable: %s",
+                    HLOG_WARN ("Not found the real value for variable: %s",
                             pattern->var_name);
                 }
                 break;

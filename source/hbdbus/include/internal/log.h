@@ -26,27 +26,19 @@
 
 #include <purc/purc-helpers.h>
 
-#ifdef NDEBUG
-#   define LOG_DEBUG(x, ...)
-#else
-#   define LOG_DEBUG(x, ...)   \
-    purc_log_debug("%s: " x, __func__, ##__VA_ARGS__)
-#endif /* not defined NDEBUG */
-
-#ifdef LOG_ERR
-#   undef LOG_ERR
-#endif
-
-#define LOG_ERR(x, ...)   \
+#define HLOG_ERR(x, ...)   \
     purc_log_error("%s: " x, __func__, ##__VA_ARGS__)
 
-#define LOG_WARN(x, ...)    \
+#define HLOG_WARN(x, ...)    \
     purc_log_warn("%s: " x, __func__, ##__VA_ARGS__)
 
-#define LOG_NOTE(x, ...)    \
+#define HLOG_NOTE(x, ...)    \
     purc_log_notice("%s: " x, __func__, ##__VA_ARGS__)
 
-#define LOG_INFO(x, ...)    \
+#define HLOG_DEBUG(x, ...)   \
+    purc_log_debug("%s: " x, __func__, ##__VA_ARGS__)
+
+#define HLOG_INFO(x, ...)    \
     purc_log_info("%s: " x, __func__, ##__VA_ARGS__)
 
 #endif /* not defined _HBDBUS_INTERNAL_LOG_H_ */

@@ -80,7 +80,7 @@ default_method_handler (BusServer *bus_srv,
         free (escaped_param);
 
     if (n < 0 || (size_t)n >= sz_packet_buff) {
-        LOG_ERR ("The size of buffer for call packet is too small.\n");
+        HLOG_ERR ("The size of buffer for call packet is too small.\n");
         *ret_code = PCRDR_SC_INTERNAL_SERVER_ERROR;
     }
     else {
@@ -233,7 +233,7 @@ builtin_method_register_event (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "registerEvent") == 0);
 
-    LOG_INFO ("parameter: %s\n", method_param);
+    HLOG_INFO ("parameter: %s\n", method_param);
 
     jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
     if (jo == NULL || !purc_variant_is_object(jo)) {
@@ -410,7 +410,7 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
             target_endpoint = *(BusEndpoint **)data;
         }
         else {
-            LOG_ERR ("No such endpoint: %s\n", normalized_name);
+            HLOG_ERR ("No such endpoint: %s\n", normalized_name);
             *ret_code = PCRDR_SC_NOT_FOUND;
             goto failed;
         }
@@ -914,7 +914,7 @@ bool init_builtin_endpoint (BusServer *bus_srv, BusEndpoint* builtin)
         return false;
     }
 
-    LOG_INFO ("The builtin procedures and events have been registered.\n");
+    HLOG_INFO ("The builtin procedures and events have been registered.\n");
 
     return true;
 }
@@ -1065,7 +1065,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
         }
     }
     else {
-        LOG_ERR ("The size of buffer for system event packet is too small.\n");
+        HLOG_ERR ("The size of buffer for system event packet is too small.\n");
     }
 
 failed:

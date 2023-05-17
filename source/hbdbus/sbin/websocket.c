@@ -530,7 +530,7 @@ ws_initialize_ssl_ctx (WSServer * server)
 out:
   if (ret) {
     SSL_CTX_free (ctx);
-    LOG_NOTE ("Error: %s\n", ERR_error_string (ERR_get_error (), NULL));
+    HLOG_NOTE ("Error: %s\n", ERR_error_string (ERR_get_error (), NULL));
   }
 
   return ret;
@@ -544,45 +544,45 @@ log_return_message (int ret, int err, const char *fn)
 
   switch (err) {
   case SSL_ERROR_NONE:
-    LOG_NOTE ("SSL: %s -> SSL_ERROR_NONE\n", fn);
-    LOG_NOTE ("SSL: TLS/SSL I/O operation completed\n");
+    HLOG_NOTE ("SSL: %s -> SSL_ERROR_NONE\n", fn);
+    HLOG_NOTE ("SSL: TLS/SSL I/O operation completed\n");
     break;
   case SSL_ERROR_WANT_READ:
-    LOG_NOTE ("SSL: %s -> SSL_ERROR_WANT_READ\n", fn);
-    LOG_NOTE ("SSL: incomplete, data available for reading\n");
+    HLOG_NOTE ("SSL: %s -> SSL_ERROR_WANT_READ\n", fn);
+    HLOG_NOTE ("SSL: incomplete, data available for reading\n");
     break;
   case SSL_ERROR_WANT_WRITE:
-    LOG_NOTE ("SSL: %s -> SSL_ERROR_WANT_WRITE\n", fn);
-    LOG_NOTE ("SSL: incomplete, data available for writing\n");
+    HLOG_NOTE ("SSL: %s -> SSL_ERROR_WANT_WRITE\n", fn);
+    HLOG_NOTE ("SSL: incomplete, data available for writing\n");
     break;
   case SSL_ERROR_ZERO_RETURN:
-    LOG_NOTE ("SSL: %s -> SSL_ERROR_ZERO_RETURN\n", fn);
-    LOG_NOTE ("SSL: TLS/SSL connection has been closed\n");
+    HLOG_NOTE ("SSL: %s -> SSL_ERROR_ZERO_RETURN\n", fn);
+    HLOG_NOTE ("SSL: TLS/SSL connection has been closed\n");
     break;
   case SSL_ERROR_WANT_X509_LOOKUP:
-    LOG_NOTE ("SSL: %s -> SSL_ERROR_WANT_X509_LOOKUP\n", fn);
+    HLOG_NOTE ("SSL: %s -> SSL_ERROR_WANT_X509_LOOKUP\n", fn);
     break;
   case SSL_ERROR_SYSCALL:
-    LOG_NOTE ("SSL: %s -> SSL_ERROR_SYSCALL\n", fn);
+    HLOG_NOTE ("SSL: %s -> SSL_ERROR_SYSCALL\n", fn);
 
     e = ERR_get_error ();
     if (e > 0)
-      LOG_NOTE ("SSL: %s -> %s\n", fn, ERR_error_string (e, NULL));
+      HLOG_NOTE ("SSL: %s -> %s\n", fn, ERR_error_string (e, NULL));
 
     /* call was not successful because a fatal error occurred either at the
      * protocol level or a connection failure occurred. */
     if (ret != 0) {
-      LOG_NOTE ("SSL bogus handshake interrupt: %s\n", strerror (errno));
+      HLOG_NOTE ("SSL bogus handshake interrupt: %s\n", strerror (errno));
       break;
     }
     /* call not yet finished. */
-    LOG_NOTE ("SSL: handshake interrupted, got EOF\n");
+    HLOG_NOTE ("SSL: handshake interrupted, got EOF\n");
     if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
-      LOG_NOTE ("SSL: %s -> not yet finished %s\n", fn, strerror (errno));
+      HLOG_NOTE ("SSL: %s -> not yet finished %s\n", fn, strerror (errno));
     break;
   default:
-    LOG_NOTE ("SSL: %s -> failed fatal error code: %d\n", fn, err);
-    LOG_NOTE ("SSL: %s\n", ERR_error_string (ERR_get_error (), NULL));
+    HLOG_NOTE ("SSL: %s -> failed fatal error code: %d\n", fn, err);
+    HLOG_NOTE ("SSL: %s\n", ERR_error_string (ERR_get_error (), NULL));
     break;
   }
 }
@@ -611,13 +611,13 @@ shutdown_ssl (WSClient * client)
     break;
   case SSL_ERROR_SYSCALL:
     if (ret == 0) {
-      LOG_NOTE ("SSL: SSL_shutdown, connection unexpectedly closed by peer.\n");
+      HLOG_NOTE ("SSL: SSL_shutdown, connection unexpectedly closed by peer.\n");
       /* The shutdown is not yet finished. */
       if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
         client->sslstatus = WS_TLS_SHUTTING;
       break;
     }
-    LOG_NOTE ("SSL: SSL_shutdown, probably unrecoverable, forcing close.\n");
+    HLOG_NOTE ("SSL: SSL_shutdown, probably unrecoverable, forcing close.\n");
     // fallthrough
   case SSL_ERROR_ZERO_RETURN:
   case SSL_ERROR_WANT_X509_LOOKUP:
@@ -679,18 +679,18 @@ handle_accept_ssl (WSServer * server, WSClient * client)
   /* attempt to create SSL connection if we don't have one yet */
   if (!client->ssl) {
     if (!(client->ssl = SSL_new (server->ctx))) {
-      LOG_NOTE ("SSL: SSL_new, new SSL structure failed.\n");
+      HLOG_NOTE ("SSL: SSL_new, new SSL structure failed.\n");
       return;
     }
     if (!SSL_set_fd (client->ssl, client->fd)) {
-      LOG_NOTE ("SSL: unable to set file descriptor\n");
+      HLOG_NOTE ("SSL: unable to set file descriptor\n");
       return;
     }
   }
 
   /* attempt to initiate the TLS/SSL handshake */
   if (accept_ssl (client) == 0) {
-    LOG_NOTE ("SSL Accepted: %d %s\n", client->fd, client->remote_ip);
+    HLOG_NOTE ("SSL Accepted: %d %s\n", client->fd, client->remote_ip);
   }
 }
 
@@ -827,7 +827,7 @@ inline static void
 set_nonblocking (int sock)
 {
   if (fcntl (sock, F_SETFL, fcntl (sock, F_GETFL, 0) | O_NONBLOCK) == -1)
-    LOG_ERR ("Unable to set socket as non-blocking: %s\n", strerror (errno));
+    HLOG_ERR ("Unable to set socket as non-blocking: %s\n", strerror (errno));
 }
 
 /* Accept a new connection on a socket and add it to the list of
@@ -845,12 +845,12 @@ accept_client (int listener /*, GSLList ** colist */)
 
   alen = sizeof (raddr);
   if ((newfd = accept (listener, (struct sockaddr *) &raddr, &alen)) == -1)
-    LOG_ERR ("Unable to set accept: %s\n", strerror (errno));
+    HLOG_ERR ("Unable to set accept: %s\n", strerror (errno));
 
   fcntl (newfd, F_SETFD, FD_CLOEXEC);
 
   if (newfd == -1) {
-    LOG_NOTE ("Unable to accept: %s\n", strerror (errno));
+    HLOG_NOTE ("Unable to accept: %s\n", strerror (errno));
     return NULL;
   }
   src = ws_get_raddr ((struct sockaddr *) &raddr);
@@ -1333,17 +1333,17 @@ access_log (WSClient * client, int status_code)
   ref = escape_http_request (hdrs->referer);
   ua = escape_http_request (hdrs->agent);
 
-  LOG_INFO ("%s ", client->remote_ip);
-  LOG_INFO ("- - ");
-  LOG_INFO ("%s ", buf);
-  LOG_INFO ("\"%s ", hdrs->method);
-  LOG_INFO ("%s ", req ? req : "-");
-  LOG_INFO ("%s\" ", hdrs->protocol);
-  LOG_INFO ("%d ", status_code);
-  LOG_INFO ("%d ", hdrs->buflen);
-  LOG_INFO ("\"%s\" ", ref ? ref : "-");
-  LOG_INFO ("\"%s\" ", ua ? ua : "-");
-  LOG_INFO ("%u\n", elapsed);
+  HLOG_INFO ("%s ", client->remote_ip);
+  HLOG_INFO ("- - ");
+  HLOG_INFO ("%s ", buf);
+  HLOG_INFO ("\"%s ", hdrs->method);
+  HLOG_INFO ("%s ", req ? req : "-");
+  HLOG_INFO ("%s\" ", hdrs->protocol);
+  HLOG_INFO ("%d ", status_code);
+  HLOG_INFO ("%d ", hdrs->buflen);
+  HLOG_INFO ("\"%s\" ", ref ? ref : "-");
+  HLOG_INFO ("\"%s\" ", ua ? ua : "-");
+  HLOG_INFO ("%u\n", elapsed);
 
   if (req)
     free (req);
@@ -1495,7 +1495,7 @@ ws_get_handshake (WSServer * server, WSClient * client)
   gettimeofday (&client->end_proc, NULL);
   if (server->config->accesslog)
     access_log (client, 101);
-  LOG_NOTE ("Active: %d\n", server->nr_clients); // gslist_count (server->colist));
+  HLOG_NOTE ("Active: %d\n", server->nr_clients); // gslist_count (server->colist));
 
   return ws_set_status (client, WS_OK, bytes);
 }
@@ -1554,7 +1554,7 @@ ws_send_packet (WSServer *server, WSClient *client, WSOpcode opcode, const char 
             return ws_send_frame (server, client, WS_OPCODE_CLOSE, NULL, 0);
 
         default:
-            LOG_WARN ("Unknown WebSocket opcode: %d\n", opcode);
+            HLOG_WARN ("Unknown WebSocket opcode: %d\n", opcode);
             return -1;
     }
 
@@ -1590,7 +1590,7 @@ ws_send_packet_safe (WSServer *server, WSClient *client,
             return ws_send_frame (server, client, WS_OPCODE_CLOSE, NULL, 0);
 
         default:
-            LOG_WARN ("Unknown WebSocket opcode: %d\n", opcode);
+            HLOG_WARN ("Unknown WebSocket opcode: %d\n", opcode);
             return -1;
     }
 
@@ -1785,11 +1785,11 @@ ws_validate_string (const char *str, int len)
   uint32_t state = UTF8_VALID;
 
   if (verify_utf8 (&state, str, len) == UTF8_INVAL) {
-    LOG_NOTE ("Invalid UTF8 data!\n");
+    HLOG_NOTE ("Invalid UTF8 data!\n");
     return 1;
   }
   if (state != UTF8_VALID) {
-    LOG_NOTE ("Invalid UTF8 data!\n");
+    HLOG_NOTE ("Invalid UTF8 data!\n");
     return 1;
   }
 
@@ -1845,7 +1845,7 @@ ws_manage_payload_opcode (WSServer * server, WSClient * client)
 
   switch ((*frm)->opcode) {
   case WS_OPCODE_CONTINUATION:
-    LOG_NOTE ("CONTINUATION\n");
+    HLOG_NOTE ("CONTINUATION\n");
     /* first frame can't be a continuation frame */
     if (!(*msg)->fragmented) {
       client->status = WS_ERR | WS_CLOSE;
@@ -1855,21 +1855,21 @@ ws_manage_payload_opcode (WSServer * server, WSClient * client)
     break;
   case WS_OPCODE_TEXT:
   case WS_OPCODE_BIN:
-    LOG_NOTE ("TEXT\n");
+    HLOG_NOTE ("TEXT\n");
     client->message->opcode = (*frm)->opcode;
     clock_gettime (CLOCK_MONOTONIC, &client->ts);
     ws_handle_text_bin (server, client);
     break;
   case WS_OPCODE_PONG:
-    LOG_NOTE ("PONG\n");
+    HLOG_NOTE ("PONG\n");
     ws_handle_pong (server, client);
     break;
   case WS_OPCODE_PING:
-    LOG_NOTE ("PING\n");
+    HLOG_NOTE ("PING\n");
     ws_handle_ping (server, client);
     break;
   default:
-    LOG_NOTE ("CLOSE\n");
+    HLOG_NOTE ("CLOSE\n");
     ws_handle_close (server, client);
   }
 }
@@ -2118,14 +2118,14 @@ read_client_data (WSServer * server, WSClient * client)
           int ret_code;
           ret_code = server->on_accepted (server, (SockClient *)client);
           if (ret_code != PCRDR_SC_OK) {
-              LOG_WARN ("Internal error after accepted this WebSocket client (%d): %d\n",
+              HLOG_WARN ("Internal error after accepted this WebSocket client (%d): %d\n",
                       client->fd, ret_code);
 
               server->on_error (server, (SockClient *)client, ret_code);
               ws_set_status (client, WS_READING, bytes);
           }
 
-          LOG_NOTE ("Accepted after handshake: %d %s\n", client->fd, client->remote_ip);
+          HLOG_NOTE ("Accepted after handshake: %d %s\n", client->fd, client->remote_ip);
       }
   }
   /* Message */
@@ -2171,7 +2171,7 @@ ws_cleanup_client (WSServer * server, WSClient * client)
 #endif
 
   server->nr_clients--;
-  LOG_NOTE ("Active: %d\n", server->nr_clients);
+  HLOG_NOTE ("Active: %d\n", server->nr_clients);
 }
 
 /* Handle a tcp read close connection. */
@@ -2197,7 +2197,7 @@ ws_handle_accept (WSServer * server, int listener)
 
   server->nr_clients++;
   if (server->nr_clients > MAX_CLIENTS_EACH) {
-    LOG_WARN ("Too busy: %d %s.\n", client->fd, client->remote_ip);
+    HLOG_WARN ("Too busy: %d %s.\n", client->fd, client->remote_ip);
 
     http_error (server, client, WS_TOO_BUSY_STR);
     handle_ws_read_close (server, client);
@@ -2323,12 +2323,12 @@ ws_listen (WSServer* server)
   hints.ai_socktype = SOCK_STREAM;
   /*hints.ai_flags = AI_PASSIVE; */
   if (getaddrinfo (server->config->host, server->config->port, &hints, &ai) != 0)
-    LOG_ERR ("Unable to set server: %s\n", gai_strerror (errno));
+    HLOG_ERR ("Unable to set server: %s\n", gai_strerror (errno));
 
   /* Create a TCP socket.  */
   listener = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol);
   if (listener < 0) {
-    LOG_ERR ("Unable to create socket: %s\n", strerror (errno));
+    HLOG_ERR ("Unable to create socket: %s\n", strerror (errno));
     goto error;
   }
 
@@ -2336,20 +2336,20 @@ ws_listen (WSServer* server)
 
   /* Options */
   if (setsockopt (listener, SOL_SOCKET, SO_REUSEADDR, &ov, sizeof (ov)) == -1) {
-    LOG_ERR ("Failed to call setsockopt: %s\n", strerror (errno));
+    HLOG_ERR ("Failed to call setsockopt: %s\n", strerror (errno));
     goto close_error;
   }
 
   /* Bind the socket to the address. */
   if (bind (listener, ai->ai_addr, ai->ai_addrlen) != 0) {
-    LOG_ERR ("Unable to bind: %s\n", strerror (errno));
+    HLOG_ERR ("Unable to bind: %s\n", strerror (errno));
     goto close_error;
   }
   freeaddrinfo (ai);
 
   /* Tell the socket to accept connections. */
   if (listen (listener, SOMAXCONN) == -1) {
-    LOG_ERR ("Unable to listen: %s\n", strerror (errno));
+    HLOG_ERR ("Unable to listen: %s\n", strerror (errno));
     goto close_error;
   }
 
