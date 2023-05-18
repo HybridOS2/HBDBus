@@ -458,7 +458,10 @@ builtin_method_list_endpoints (BusServer *bus_srv,
     assert (to->type == ET_BUILTIN);
     assert (strcasecmp (method_name, "listEndpoints") == 0);
 
+    HLOG_INFO("called\n");
+
     if (pcutils_printbuf_init (pb)) {
+        HLOG_ERR("Failed to initialize printbuf.\n");
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
         return NULL;
     }
@@ -881,7 +884,7 @@ bool init_builtin_endpoint (BusServer *bus_srv, BusEndpoint* builtin)
     }
 
     if (register_procedure (bus_srv, builtin, "listEndpoints",
-            HBDBUS_PATTERN_ANY, HBDBUS_APP_HBDBUS,
+            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS,
             builtin_method_list_endpoints) != PCRDR_SC_OK) {
         return false;
     }

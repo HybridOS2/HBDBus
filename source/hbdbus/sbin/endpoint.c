@@ -362,11 +362,12 @@ int check_dangling_endpoints (BusServer *bus_srv)
     return n;
 }
 
+#define LEN_BODY_PART       0
+
 int send_packet_to_endpoint (BusServer* bus_srv,
         BusEndpoint* endpoint, const char* body, int len_body)
 {
-#if 0
-#define LEN_BODY_PART       32
+#if LEN_BODY_PART
     char *part;
     if (len_body > LEN_BODY_PART)
         part = strndup(body, LEN_BODY_PART);
