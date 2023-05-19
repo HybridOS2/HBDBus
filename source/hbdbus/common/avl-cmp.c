@@ -24,3 +24,10 @@ avl_strcmp(const void *k1, const void *k2, void *ptr)
     return strcmp(k1, k2);
 }
 
+int
+avl_strcasecmp(const void *k1, const void *k2, void *ptr)
+{
+    (void)ptr;
+    return strcasecmp(k1, k2);
+}
+

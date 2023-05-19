@@ -177,6 +177,7 @@ struct avl_node *avl_find_lessequal(const struct avl_tree *tree,
 int avl_insert(struct avl_tree *, struct avl_node *) WTF_INTERNAL;
 void avl_delete(struct avl_tree *, struct avl_node *) WTF_INTERNAL;
 int avl_strcmp(const void *k1, const void *k2, void *ptr) WTF_INTERNAL;
+int avl_strcasecmp(const void *k1, const void *k2, void *ptr) WTF_INTERNAL;
 
 #ifdef __cplusplus
 }

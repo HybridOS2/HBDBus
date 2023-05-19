@@ -89,9 +89,9 @@ BusEndpoint* new_endpoint (BusServer* bus_srv, int type, void* client)
         wsc->entity = &endpoint->entity;
     }
 
-    kvlist_init (&endpoint->method_list, NULL);
-    kvlist_init (&endpoint->bubble_list, NULL);
-    kvlist_init (&endpoint->subscribed_list, NULL);
+    kvlist_init (&endpoint->method_list, NULL, true);
+    kvlist_init (&endpoint->bubble_list, NULL, true);
+    kvlist_init (&endpoint->subscribed_list, NULL, true);
 
     return endpoint;
 }
@@ -493,7 +493,8 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
     if (!purc_is_valid_host_name (host_name) ||
             !purc_is_valid_app_name (app_name) ||
             !purc_is_valid_token (runner_name, HBDBUS_LEN_RUNNER_NAME)) {
-        HLOG_WARN ("Bad endpoint name: edpt://%s/%s/%s\n", host_name, app_name, runner_name);
+        HLOG_WARN ("Bad endpoint name: edpt://%s/%s/%s\n",
+                host_name, app_name, runner_name);
         return PCRDR_SC_NOT_ACCEPTABLE;
     }
 
@@ -641,7 +642,7 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     purc_variant_t jo_tmp;
     const char *str_tmp;
     char to_endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
-    char to_method_name [HBDBUS_LEN_METHOD_NAME + 1];
+    const char *to_method_name = NULL;
     BusEndpoint *to_endpoint;
     MethodInfo *to_method;
     const char *call_id = NULL;
@@ -668,8 +669,10 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "toEndpoint"))) {
         if ((str_tmp = purc_variant_get_string_const(jo_tmp))) {
             void *data;
-            purc_name_tolower_copy (str_tmp, to_endpoint_name, HBDBUS_LEN_ENDPOINT_NAME);
-            if ((data = kvlist_get (&bus_srv->endpoint_list, to_endpoint_name))) {
+            purc_name_tolower_copy (str_tmp, to_endpoint_name,
+                    HBDBUS_LEN_ENDPOINT_NAME);
+            if ((data = kvlist_get (&bus_srv->endpoint_list,
+                            to_endpoint_name))) {
                 to_endpoint = *(BusEndpoint **)data;
             }
             else {
@@ -690,7 +693,7 @@ static int handle_call_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "toMethod"))) {
         if ((str_tmp = purc_variant_get_string_const(jo_tmp))) {
             void *data;
-            purc_name_tolower_copy (str_tmp, to_method_name, HBDBUS_LEN_METHOD_NAME);
+            to_method_name = str_tmp;
             if ((data = kvlist_get (&to_endpoint->method_list, to_method_name))) {
                 to_method = *(MethodInfo **)data;
             }
@@ -1073,7 +1076,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
 {
     purc_variant_t jo_tmp;
     const char *str_tmp;
-    char bubble_name [HBDBUS_LEN_BUBBLE_NAME + 1];
+    const char *bubble_name = NULL;
     BubbleInfo *bubble;
     const char *event_id = NULL;
     const char *bubble_data;
@@ -1089,7 +1092,7 @@ static int handle_event_packet (BusServer* bus_srv, BusEndpoint* endpoint,
     if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName"))) {
         if ((str_tmp = purc_variant_get_string_const (jo_tmp))) {
             void *data;
-            purc_name_toupper_copy (str_tmp, bubble_name, HBDBUS_LEN_BUBBLE_NAME);
+            bubble_name = str_tmp;
             if ((data = kvlist_get (&endpoint->bubble_list, bubble_name))) {
                 bubble = *(BubbleInfo **)data;
             }
@@ -1331,14 +1334,11 @@ int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint,
     (void)bus_srv;
     int retv = PCRDR_SC_OK;
     MethodInfo *info;
-    char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
 
     if (!hbdbus_is_valid_method_name (method_name))
         return PCRDR_SC_BAD_REQUEST;
 
-    purc_name_tolower_copy (method_name, normalized_name, 0);
-
-    if (kvlist_get (&endpoint->method_list, normalized_name)) {
+    if (kvlist_get (&endpoint->method_list, method_name)) {
         return PCRDR_SC_CONFLICT;
     }
 
@@ -1367,14 +1367,14 @@ int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint,
 
     info->handler = handler;
 
-    if (!kvlist_set (&endpoint->method_list, normalized_name, &info)) {
+    if (!kvlist_set (&endpoint->method_list, method_name, &info)) {
         retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
     HLOG_INFO ("New procedure registered: edpt://%s/%s/%s/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
-            normalized_name, info);
+            method_name, info);
     return PCRDR_SC_OK;
 
 failed:
@@ -1389,14 +1389,11 @@ int revoke_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* met
     (void)bus_srv;
     void *data;
     MethodInfo *info;
-    char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
 
     if (!hbdbus_is_valid_method_name (method_name))
         return PCRDR_SC_BAD_REQUEST;
 
-    purc_name_tolower_copy (method_name, normalized_name, 0);
-
-    if ((data = kvlist_get (&endpoint->method_list, normalized_name)) == NULL) {
+    if ((data = kvlist_get (&endpoint->method_list, method_name)) == NULL) {
         return PCRDR_SC_NOT_FOUND;
     }
 
@@ -1406,26 +1403,24 @@ int revoke_procedure (BusServer *bus_srv, BusEndpoint* endpoint, const char* met
     /* TODO: cancel pending calls */
     free (info);
 
-    kvlist_delete (&endpoint->method_list, normalized_name);
+    kvlist_delete (&endpoint->method_list, method_name);
     return PCRDR_SC_OK;
 }
 
-int register_event (BusServer *bus_srv, BusEndpoint* endpoint, const char* bubble_name,
+int register_event (BusServer *bus_srv, BusEndpoint* endpoint,
+        const char* bubble_name,
         const char* for_host, const char* for_app)
 {
     (void)bus_srv;
     int retv = PCRDR_SC_OK;
     BubbleInfo *info;
-    char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
 
     HLOG_INFO ("register_event: %s (%s, %s)\n", bubble_name, for_host, for_app);
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
         return PCRDR_SC_BAD_REQUEST;
 
-    purc_name_toupper_copy (bubble_name, normalized_name, 0);
-
-    if (kvlist_get (&endpoint->bubble_list, normalized_name)) {
+    if (kvlist_get (&endpoint->bubble_list, bubble_name)) {
         return PCRDR_SC_CONFLICT;
     }
 
@@ -1452,16 +1447,16 @@ int register_event (BusServer *bus_srv, BusEndpoint* endpoint, const char* bubbl
         goto failed;
     }
 
-    kvlist_init (&info->subscriber_list, NULL);
+    kvlist_init (&info->subscriber_list, NULL, true);
 
-    if (!kvlist_set (&endpoint->bubble_list, normalized_name, &info)) {
+    if (!kvlist_set (&endpoint->bubble_list, bubble_name, &info)) {
         retv = PCRDR_SC_INSUFFICIENT_STORAGE;
         goto failed;
     }
 
     HLOG_INFO ("New event registered: edpt://%s/%s/%s/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
-            normalized_name, info);
+            bubble_name, info);
     return PCRDR_SC_OK;
 
 failed:
@@ -1477,14 +1472,11 @@ int revoke_event (BusServer *bus_srv, BusEndpoint *endpoint, const char* bubble_
     const char* name;
     void *data;
     BubbleInfo *bubble;
-    char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
         return PCRDR_SC_BAD_REQUEST;
 
-    purc_name_toupper_copy (bubble_name, normalized_name, 0);
-
-    if ((data = kvlist_get (&endpoint->bubble_list, normalized_name)) == NULL) {
+    if ((data = kvlist_get (&endpoint->bubble_list, bubble_name)) == NULL) {
         return PCRDR_SC_NOT_FOUND;
     }
 
@@ -1508,7 +1500,7 @@ int revoke_event (BusServer *bus_srv, BusEndpoint *endpoint, const char* bubble_
     kvlist_free (&bubble->subscriber_list);
     free (bubble);
 
-    kvlist_delete (&endpoint->bubble_list, normalized_name);
+    kvlist_delete (&endpoint->bubble_list, bubble_name);
     return PCRDR_SC_OK;
 }
 
@@ -1518,16 +1510,13 @@ int subscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
     (void)bus_srv;
     void *data;
     BubbleInfo *info;
-    char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
     char subscriber_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
         return PCRDR_SC_BAD_REQUEST;
 
-    purc_name_toupper_copy (bubble_name, normalized_name, 0);
-
-    if ((data = kvlist_get (&endpoint->bubble_list, normalized_name)) == NULL) {
+    if ((data = kvlist_get (&endpoint->bubble_list, bubble_name)) == NULL) {
         return PCRDR_SC_NOT_FOUND;
     }
 
@@ -1535,12 +1524,12 @@ int subscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
 
     assemble_endpoint_name (endpoint, event_name);
     strcat (event_name, "/");
-    strcat (event_name, normalized_name);
+    strcat (event_name, bubble_name);
 
     info = *(BubbleInfo **)data;
     if (kvlist_get (&info->subscriber_list, subscriber_name)) {
         HLOG_ERR ("Duplicated subscriber (%s) for bubble: %s\n",
-                subscriber_name, normalized_name);
+                subscriber_name, bubble_name);
         return PCRDR_SC_CONFLICT;
     }
 
@@ -1572,7 +1561,6 @@ int unsubscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
     void *data;
     BubbleInfo *info;
     char subscriber_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
-    char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
 
     if (!hbdbus_is_valid_bubble_name (bubble_name)) {
@@ -1580,18 +1568,15 @@ int unsubscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
         return PCRDR_SC_BAD_REQUEST;
     }
 
-    purc_name_toupper_copy (bubble_name, normalized_name, 0);
-
-    if ((data = kvlist_get (&endpoint->bubble_list, normalized_name)) == NULL) {
-        HLOG_ERR ("No such bubble: %s\n", normalized_name);
+    if ((data = kvlist_get (&endpoint->bubble_list, bubble_name)) == NULL) {
+        HLOG_ERR ("No such bubble: %s\n", bubble_name);
         return PCRDR_SC_NOT_FOUND;
     }
 
     assemble_endpoint_name (subscriber, subscriber_name);
-
     assemble_endpoint_name (endpoint, event_name);
     strcat (event_name, "/");
-    strcat (event_name, normalized_name);
+    strcat (event_name, bubble_name);
 
     info = *(BubbleInfo **)data;
     if (kvlist_get (&info->subscriber_list, subscriber_name) == NULL) {

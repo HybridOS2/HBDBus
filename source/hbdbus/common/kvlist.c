@@ -28,9 +28,11 @@ int kvlist_strlen(struct kvlist *kv, const void *data)
     return strlen(data) + 1;
 }
 
-void kvlist_init(struct kvlist *kv, int (*get_len)(struct kvlist *kv, const void *data))
+void kvlist_init(struct kvlist *kv,
+        int (*get_len)(struct kvlist *kv, const void *data),
+        bool caseless)
 {
-    avl_init(&kv->avl, avl_strcmp, false, NULL);
+    avl_init(&kv->avl, caseless ? avl_strcasecmp : avl_strcmp, false, NULL);
     kv->get_len = get_len;
 }
 

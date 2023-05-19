@@ -724,8 +724,8 @@ init_bus_server (void)
     /* TODO for host name */
     the_server.running = true;
     the_server.server_name = strdup (HBDBUS_LOCALHOST);
-    kvlist_init (&the_server.endpoint_list, NULL);
-    kvlist_init (&the_server.waiting_endpoints, get_waiting_info_len);
+    kvlist_init (&the_server.endpoint_list, NULL, false);
+    kvlist_init (&the_server.waiting_endpoints, get_waiting_info_len, false);
     avl_init (&the_server.living_avl, comp_living_time, true, NULL);
 
     builtin = new_endpoint (&the_server, ET_BUILTIN, NULL);

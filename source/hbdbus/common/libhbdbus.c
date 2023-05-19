@@ -421,7 +421,7 @@ static void on_lost_event_bubble (hbdbus_conn* conn,
     n = purc_name_tolower_copy(endpoint_name, event_name, HBDBUS_LEN_ENDPOINT_NAME);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    purc_name_toupper_copy(bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    strcpy(event_name + n, bubble_name);
     if (!kvlist_get(&conn->subscribed_list, event_name))
         return;
 
@@ -611,10 +611,10 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
     (*conn)->app_name = strdup (app_name);
     (*conn)->runner_name = strdup (runner_name);
 
-    kvlist_init (&(*conn)->method_list, mhi_get_len);
-    kvlist_init (&(*conn)->bubble_list, NULL);
-    kvlist_init (&(*conn)->call_list, NULL);
-    kvlist_init (&(*conn)->subscribed_list, NULL);
+    kvlist_init (&(*conn)->method_list, mhi_get_len, true);
+    kvlist_init (&(*conn)->bubble_list, NULL, true);
+    kvlist_init (&(*conn)->call_list, NULL, false);
+    kvlist_init (&(*conn)->subscribed_list, NULL, false);
 
     /* try to read challenge code */
     if ((err_code = get_challenge_code (*conn, &ch_code)))
@@ -1166,7 +1166,6 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
 {
     int n, err_code, ret_code;
     char endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
-    char normalized_method [HBDBUS_LEN_METHOD_NAME + 1];
     char param_buff [HBDBUS_MIN_PACKET_BUFF_SIZE];
     char* ret_value;
 
@@ -1182,9 +1181,8 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
     if (!hbdbus_is_valid_wildcard_pattern_list (for_app)) {
         return HBDBUS_EC_INVALID_VALUE;
     }
-    purc_name_tolower_copy (method_name, normalized_method, HBDBUS_LEN_METHOD_NAME);
 
-    if (kvlist_get (&conn->method_list, normalized_method))
+    if (kvlist_get (&conn->method_list, method_name))
         return HBDBUS_EC_DUPLICATED;
 
     n = snprintf (param_buff, sizeof (param_buff), 
@@ -1193,7 +1191,7 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
             "\"forHost\": \"%s\","
             "\"forApp\": \"%s\""
             "}",
-            normalized_method,
+            method_name,
             for_host, for_app);
 
     if (n < 0) {
@@ -1212,7 +1210,7 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
     }
 
     if (ret_code == PCRDR_SC_OK) {
-        kvlist_set (&conn->method_list, normalized_method, mhi);
+        kvlist_set (&conn->method_list, method_name, mhi);
         if (ret_value)
             free (ret_value);
     }
@@ -1243,23 +1241,20 @@ int hbdbus_revoke_procedure (hbdbus_conn* conn, const char* method_name)
 {
     int n, err_code, ret_code;
     char endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
-    char normalized_method [HBDBUS_LEN_METHOD_NAME + 1];
     char param_buff [HBDBUS_MIN_PACKET_BUFF_SIZE];
     char* ret_value;
 
     if (!hbdbus_is_valid_method_name (method_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    purc_name_tolower_copy (method_name, normalized_method, HBDBUS_LEN_METHOD_NAME);
-
-    if (!kvlist_get (&conn->method_list, normalized_method))
+    if (!kvlist_get (&conn->method_list, method_name))
         return HBDBUS_EC_INVALID_VALUE;
 
     n = snprintf (param_buff, sizeof (param_buff), 
             "{"
             "\"methodName\": \"%s\""
             "}",
-            normalized_method);
+            method_name);
 
     if (n < 0) {
         return HBDBUS_EC_UNEXPECTED;
@@ -1277,7 +1272,7 @@ int hbdbus_revoke_procedure (hbdbus_conn* conn, const char* method_name)
     }
 
     if (ret_code == PCRDR_SC_OK) {
-        kvlist_delete (&conn->method_list, normalized_method);
+        kvlist_delete (&conn->method_list, method_name);
 
         if (ret_value)
             free (ret_value);
@@ -1291,7 +1286,6 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
 {
     int n, err_code, ret_code;
     char endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
-    char normalized_bubble [HBDBUS_LEN_BUBBLE_NAME + 1];
     char param_buff [HBDBUS_MIN_PACKET_BUFF_SIZE];
     char* ret_value;
 
@@ -1308,8 +1302,7 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
         return HBDBUS_EC_INVALID_VALUE;
     }
 
-    purc_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
-    if (kvlist_get (&conn->bubble_list, normalized_bubble))
+    if (kvlist_get (&conn->bubble_list, bubble_name))
         return HBDBUS_EC_DUPLICATED;
 
     n = snprintf (param_buff, sizeof (param_buff), 
@@ -1318,7 +1311,7 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
             "\"forHost\": \"%s\","
             "\"forApp\": \"%s\""
             "}",
-            normalized_bubble,
+            bubble_name,
             for_host, for_app);
 
     if (n < 0) {
@@ -1337,7 +1330,7 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
     }
 
     if (ret_code == PCRDR_SC_OK) {
-        kvlist_set (&conn->bubble_list, normalized_bubble, hbdbus_register_event);
+        kvlist_set (&conn->bubble_list, bubble_name, hbdbus_register_event);
 
         if (ret_value)
             free (ret_value);
@@ -1353,22 +1346,20 @@ int hbdbus_revoke_event (hbdbus_conn* conn, const char* bubble_name)
 {
     int n, err_code, ret_code;
     char endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
-    char normalized_bubble [HBDBUS_LEN_BUBBLE_NAME + 1];
     char param_buff [HBDBUS_MIN_PACKET_BUFF_SIZE];
     char* ret_value;
 
     if (!hbdbus_is_valid_bubble_name (bubble_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    purc_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
-    if (!kvlist_get (&conn->bubble_list, normalized_bubble))
+    if (!kvlist_get (&conn->bubble_list, bubble_name))
         return HBDBUS_EC_INVALID_VALUE;
 
     n = snprintf (param_buff, sizeof (param_buff), 
             "{"
             "\"bubbleName\": \"%s\""
             "}",
-            normalized_bubble);
+            bubble_name);
 
     if (n < 0) {
         return HBDBUS_EC_UNEXPECTED;
@@ -1386,7 +1377,7 @@ int hbdbus_revoke_event (hbdbus_conn* conn, const char* bubble_name)
     }
 
     if (ret_code == PCRDR_SC_OK) {
-        kvlist_delete (&conn->bubble_list, normalized_bubble);
+        kvlist_delete (&conn->bubble_list, bubble_name);
 
         if (ret_value)
             free (ret_value);
@@ -1417,7 +1408,7 @@ int hbdbus_subscribe_event (hbdbus_conn* conn,
     n = purc_name_tolower_copy (endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    purc_name_toupper_copy (bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    strcpy(event_name + n, bubble_name);
     if (kvlist_get (&conn->subscribed_list, event_name))
         return HBDBUS_EC_INVALID_VALUE;
 
@@ -1472,7 +1463,7 @@ int hbdbus_unsubscribe_event (hbdbus_conn* conn,
     n = purc_name_tolower_copy (endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    purc_name_toupper_copy (bubble_name, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    strcpy(event_name + n, bubble_name);
     if (!kvlist_get (&conn->subscribed_list, event_name))
         return HBDBUS_EC_INVALID_VALUE;
 
@@ -1574,9 +1565,7 @@ int hbdbus_fire_event (hbdbus_conn* conn,
         const char* bubble_name, const char* bubble_data)
 {
     int n;
-    char normalized_bubble [HBDBUS_LEN_BUBBLE_NAME + 1];
     char event_id [HBDBUS_LEN_UNIQUE_ID + 1];
-
     char buff_in_stack [HBDBUS_DEF_PACKET_BUFF_SIZE];
     char* packet_buff = buff_in_stack;
     size_t len_data = bubble_data ? (strlen (bubble_data) * 2 + 1) : 0;
@@ -1589,8 +1578,7 @@ int hbdbus_fire_event (hbdbus_conn* conn,
         return HBDBUS_EC_INVALID_VALUE;
     }
 
-    purc_name_toupper_copy (bubble_name, normalized_bubble, HBDBUS_LEN_BUBBLE_NAME);
-    if (!kvlist_get (&conn->bubble_list, normalized_bubble)) {
+    if (!kvlist_get (&conn->bubble_list, bubble_name)) {
         err_code = HBDBUS_EC_INVALID_VALUE;
         return HBDBUS_EC_INVALID_VALUE;
     }
@@ -1623,7 +1611,7 @@ int hbdbus_fire_event (hbdbus_conn* conn,
             "\"bubbleData\": \"%s\""
             "}",
             event_id,
-            normalized_bubble,
+            bubble_name,
             escaped_data ? escaped_data : "");
     if (escaped_data)
         free (escaped_data);
@@ -1650,7 +1638,6 @@ static int dispatch_call_packet (hbdbus_conn* conn, const purc_variant_t jo)
     const char* from_endpoint = NULL, *call_id=NULL, *result_id = NULL;
     const char* to_method;
     const char* parameter;
-    char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
     void *data;
     char *ret_value = NULL;
     int err_code = 0;
@@ -1700,8 +1687,7 @@ static int dispatch_call_packet (hbdbus_conn* conn, const purc_variant_t jo)
         parameter = "";
     }
 
-    purc_name_tolower_copy(to_method, normalized_name, HBDBUS_LEN_METHOD_NAME);
-    if ((data = kvlist_get(&conn->method_list, normalized_name)) == NULL) {
+    if ((data = kvlist_get(&conn->method_list, to_method)) == NULL) {
         err_code = HBDBUS_EC_UNKNOWN_METHOD;
         goto done;
     }
@@ -1716,12 +1702,12 @@ static int dispatch_call_packet (hbdbus_conn* conn, const purc_variant_t jo)
         if (mhi.type == MHT_CONST_STRING) {
             hbdbus_method_handler_const method_handler = mhi.handler;
             ret_value_const = method_handler(conn, from_endpoint,
-                    normalized_name, parameter, &err_code);
+                    to_method, parameter, &err_code);
         }
         else {
             hbdbus_method_handler method_handler = mhi.handler;
             ret_value = method_handler(conn, from_endpoint,
-                    normalized_name, parameter, &err_code);
+                    to_method, parameter, &err_code);
             ret_value_const = ret_value;
         }
 
@@ -1772,7 +1758,7 @@ done:
             "\"retValue\": \"%s\""
             "}",
             result_id, call_id,
-            normalized_name,
+            to_method,
             time_consumed,
             ret_code,
             pcrdr_get_ret_message (ret_code),
@@ -1912,7 +1898,7 @@ static int dispatch_event_packet (hbdbus_conn* conn, const purc_variant_t jo)
     n = purc_name_tolower_copy(from_endpoint, event_name, HBDBUS_LEN_ENDPOINT_NAME);
     event_name[n++] = '/';
     event_name[n] = '\0';
-    purc_name_toupper_copy(from_bubble, event_name + n, HBDBUS_LEN_BUBBLE_NAME);
+    strcpy(event_name + n, from_bubble);
     if ((data = kvlist_get(&conn->subscribed_list, event_name)) == NULL) {
         fprintf (stderr, "Got a unsubscribed event: %s\n", event_name);
         return HBDBUS_EC_UNKNOWN_EVENT;

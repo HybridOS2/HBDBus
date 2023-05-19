@@ -68,7 +68,8 @@ extern "C" {
 
 /* get_len can be NULL for pointer */
 void kvlist_init(struct kvlist *kv,
-        int (*get_len)(struct kvlist *kv, const void *data)) WTF_INTERNAL;
+        int (*get_len)(struct kvlist *kv, const void *data),
+        bool caseless) WTF_INTERNAL;
 void kvlist_free(struct kvlist *kv) WTF_INTERNAL;
 void *kvlist_get(struct kvlist *kv, const char *name) WTF_INTERNAL;
 const char *kvlist_set_ex(struct kvlist *kv,

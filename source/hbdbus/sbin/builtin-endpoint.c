@@ -110,7 +110,7 @@ builtin_method_echo (BusServer *bus_srv,
     (void)method_name;
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "echo") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_ECHO) == 0);
 
     *ret_code = PCRDR_SC_OK;
 
@@ -135,7 +135,7 @@ builtin_method_register_procedure (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "registerProcedure") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_REGISTERPROCEDURE) == 0);
 
     jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
     if (jo == NULL || !purc_variant_is_object(jo)) {
@@ -192,7 +192,7 @@ builtin_method_revoke_procedure (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "revokeProcedure") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_REVOKEPROCEDURE) == 0);
 
     jo = purc_variant_make_from_json_string(method_param, strlen (method_param));
     if (jo == NULL || !purc_variant_is_object(jo)) {
@@ -231,7 +231,7 @@ builtin_method_register_event (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "registerEvent") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_REGISTEREVENT) == 0);
 
     HLOG_INFO ("parameter: %s\n", method_param);
 
@@ -288,7 +288,7 @@ builtin_method_revoke_event (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "revokeEvent") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_REVOKEEVENT) == 0);
 
     jo = purc_variant_make_from_json_string(method_param, strlen(method_param));
     if (jo == NULL || !purc_variant_is_object(jo)) {
@@ -329,7 +329,7 @@ builtin_method_subscribe_event (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "subscribeEvent") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_SUBSCRIBEEVENT) == 0);
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
 
@@ -390,7 +390,7 @@ builtin_method_unsubscribe_event (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "unsubscribeEvent") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_UNSUBSCRIBEEVENT) == 0);
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
 
@@ -456,7 +456,7 @@ builtin_method_list_endpoints (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "listEndpoints") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_LISTENDPOINTS) == 0);
 
     HLOG_INFO("called\n");
 
@@ -531,7 +531,7 @@ builtin_method_list_procedures (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "listProcedures") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_LISTPROCEDURES) == 0);
 
     if (pcutils_printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
@@ -640,7 +640,7 @@ builtin_method_list_events (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "listEvents") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_LISTEVENTS) == 0);
 
     if (pcutils_printbuf_init (pb)) {
         *ret_code = PCRDR_SC_INSUFFICIENT_STORAGE;
@@ -749,7 +749,7 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
 
     assert (from->type != ET_BUILTIN);
     assert (to->type == ET_BUILTIN);
-    assert (strcasecmp (method_name, "listEventSubscribers") == 0);
+    assert (strcasecmp (method_name, HBDBUS_METHOD_LISTEVENTSUBSCRIBERS) == 0);
 
     struct pcutils_printbuf my_buff, *pb = &my_buff;
 
@@ -786,11 +786,7 @@ builtin_method_list_event_subscribers (BusServer *bus_srv,
     if ((jo_tmp = purc_variant_object_get_by_ckey (jo, "bubbleName")) &&
             (param_bubble_name = purc_variant_get_string_const (jo_tmp))) {
         void *data;
-        char normalized_name [HBDBUS_LEN_BUBBLE_NAME + 1];
-
-        purc_name_toupper_copy (param_bubble_name, normalized_name, HBDBUS_LEN_BUBBLE_NAME);
-
-        if ((data = kvlist_get (&target_endpoint->bubble_list, normalized_name))) {
+        if ((data = kvlist_get (&target_endpoint->bubble_list, param_bubble_name))) {
             bubble = *(BubbleInfo **)data;
         }
     }
@@ -841,78 +837,78 @@ failed:
 
 bool init_builtin_endpoint (BusServer *bus_srv, BusEndpoint* builtin)
 {
-    if (register_procedure (bus_srv, builtin, "echo",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_ECHO,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_echo) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "registerProcedure",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_REGISTERPROCEDURE,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_register_procedure) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "revokeProcedure",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_REVOKEPROCEDURE,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_revoke_procedure) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "registerEvent",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_REGISTEREVENT,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_register_event) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "revokeEvent",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_REVOKEEVENT,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_revoke_event) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "subscribeEvent",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_SUBSCRIBEEVENT,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_subscribe_event) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "unsubscribeEvent",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_UNSUBSCRIBEEVENT,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_unsubscribe_event) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "listEndpoints",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_LISTENDPOINTS,
             HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS,
             builtin_method_list_endpoints) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "listProcedures",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_LISTPROCEDURES,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_list_procedures) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "listEvents",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_LISTEVENTS,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_list_events) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_procedure (bus_srv, builtin, "listEventSubscribers",
+    if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_LISTEVENTSUBSCRIBERS,
             HBDBUS_PATTERN_ANY, HBDBUS_PATTERN_ANY,
             builtin_method_list_event_subscribers) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_event (bus_srv, builtin, "NEWENDPOINT",
+    if (register_event (bus_srv, builtin, HBDBUS_BUBBLE_NEWENDPOINT,
             HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != PCRDR_SC_OK) {
         return false;
     }
 
-    if (register_event (bus_srv, builtin, "BROKENENDPOINT",
+    if (register_event (bus_srv, builtin, HBDBUS_BUBBLE_BROKENENDPOINT,
             HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != PCRDR_SC_OK) {
         return false;
     }
@@ -954,7 +950,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
                 cause->host_name, cause->app_name, cause->runner_name,
                 peer_info,
                 bus_srv->nr_endpoints);
-        bubble_name = "NEWENDPOINT";
+        bubble_name = HBDBUS_BUBBLE_NEWENDPOINT;
     }
     else if (bubble_type == SBT_BROKEN_ENDPOINT) {
 #if 0
@@ -984,7 +980,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
                 cause->host_name, cause->app_name, cause->runner_name,
                 peer_info, add_msg,
                 bus_srv->nr_endpoints);
-        bubble_name = "BROKENENDPOINT";
+        bubble_name = HBDBUS_BUBBLE_BROKENENDPOINT;
     }
     else if (bubble_type == SBT_LOST_EVENT_GENERATOR) {
         n = snprintf (bubble_data, sizeof (bubble_data), 
@@ -992,7 +988,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
                 "\"endpointName\":\"edpt://%s/%s/%s\","
                 "}",
                 cause->host_name, cause->app_name, cause->runner_name);
-        bubble_name = "LOSTEVENTGENERATOR";
+        bubble_name = HBDBUS_BUBBLE_LOSTEVENTGENERATOR;
     }
     else if (bubble_type == SBT_LOST_EVENT_BUBBLE) {
         n = snprintf (bubble_data, sizeof (bubble_data), 
@@ -1002,7 +998,7 @@ bool fire_system_event (BusServer* bus_srv, int bubble_type,
                 "}",
                 cause->host_name, cause->app_name, cause->runner_name,
                 add_msg);
-        bubble_name = "LOSTEVENTBUBBLE";
+        bubble_name = HBDBUS_BUBBLE_LOSTEVENTBUBBLE;
     }
     else {
         return false;

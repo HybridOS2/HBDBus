@@ -50,6 +50,23 @@
 #define HBDBUS_RUNNER_BUILITIN           "builtin"
 #define HBDBUS_RUNNER_CMDLINE            "cmdline"
 
+#define HBDBUS_METHOD_ECHO                  "echo"
+#define HBDBUS_METHOD_REGISTERPROCEDURE     "registerProcedure"
+#define HBDBUS_METHOD_REVOKEPROCEDURE       "revokeProcedure"
+#define HBDBUS_METHOD_REGISTEREVENT         "registerEvent"
+#define HBDBUS_METHOD_REVOKEEVENT           "revokeEvent"
+#define HBDBUS_METHOD_SUBSCRIBEEVENT        "subscribeEvent"
+#define HBDBUS_METHOD_UNSUBSCRIBEEVENT      "unsubscribeEvent"
+#define HBDBUS_METHOD_LISTENDPOINTS         "listEndpoints"
+#define HBDBUS_METHOD_LISTPROCEDURES        "listProcedures"
+#define HBDBUS_METHOD_LISTEVENTS            "listEvents"
+#define HBDBUS_METHOD_LISTEVENTSUBSCRIBERS  "listEventSubscribers"
+
+#define HBDBUS_BUBBLE_NEWENDPOINT           "NewEndpoint"
+#define HBDBUS_BUBBLE_BROKENENDPOINT        "BrokenEndpoint"
+#define HBDBUS_BUBBLE_LOSTEVENTGENERATOR    "LostEventGenerator"
+#define HBDBUS_BUBBLE_LOSTEVENTBUBBLE       "LostEventBubble"
+
 #define HBDBUS_NOT_AVAILABLE             "<N/A>"
 
 #define HBDBUS_PUBLIC_PEM_KEY_FILE       "/etc/public-keys/public-%s.pem"

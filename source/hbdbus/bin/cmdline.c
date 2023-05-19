@@ -117,11 +117,11 @@ static struct cmd_info {
         "call edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin echo Hi, there",
         AT_ENDPOINT, AT_METHOD, AT_NONE, AT_STRING, },
     { CMD_REGISTER_EVENT,
-        "registerEvent", "rge", 
+        HBDBUS_METHOD_REGISTEREVENT, "rge", 
         "registerevent MYEVENT *",
         AT_NONE, AT_BUBBLE, AT_NONE, AT_STRING, },
     { CMD_REVOKE_EVENT,
-        "revokeEvent", "rve", 
+        HBDBUS_METHOD_REVOKEEVENT, "rve", 
         "revokeevent MYEVENT",
         AT_NONE, AT_BUBBLE, AT_NONE, AT_NONE, },
     { CMD_FIRE,
@@ -449,13 +449,11 @@ static const char* my_method_handler (hbdbus_conn* conn,
     (void)method_param;
     (void)err_code;
 
-    char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
     struct run_info *info = hbdbus_conn_get_user_data (conn);
     void* data;
     char* value;
 
-    purc_name_tolower_copy (to_method, normalized_name, HBDBUS_LEN_METHOD_NAME);
-    if ((data = kvlist_get (&info->ret_value_list, normalized_name)) == NULL) {
+    if ((data = kvlist_get (&info->ret_value_list, to_method)) == NULL) {
         return "NULL";
     }
 
@@ -513,7 +511,6 @@ static void on_cmd_revoke_method (hbdbus_conn *conn,
 static void on_cmd_set_return_value (hbdbus_conn *conn,
         const char* method, const char* ret_value)
 {
-    char normalized_name [HBDBUS_LEN_METHOD_NAME + 1];
     struct run_info *info = hbdbus_conn_get_user_data (conn);
     char* value;
 
@@ -522,13 +519,12 @@ static void on_cmd_set_return_value (hbdbus_conn *conn,
         return;
     }
 
-    purc_name_tolower_copy (method, normalized_name, HBDBUS_LEN_METHOD_NAME);
     value = strdup (ret_value);
-    if (kvlist_set (&info->ret_value_list, normalized_name, &value)) {
-        fprintf (stderr, "Value store for method: %s\n", normalized_name);
+    if (kvlist_set (&info->ret_value_list, method, &value)) {
+        fprintf (stderr, "Value store for method: %s\n", method);
     }
     else {
-        fprintf (stderr, "Failed to store value for method: %s\n", normalized_name);
+        fprintf (stderr, "Failed to store value for method: %s\n", method);
     }
 }
 
@@ -724,7 +720,7 @@ static void on_cmd_list_endpoints (hbdbus_conn* conn)
 
     hbdbus_call_procedure (conn,
             info->builtin_endpoint,
-            "listEndpoints",
+            HBDBUS_METHOD_LISTENDPOINTS,
             "",
             HBDBUS_DEF_TIME_EXPECTED,
             on_result_list_procedures, NULL);
@@ -756,7 +752,7 @@ static void on_cmd_list_procedures (hbdbus_conn *conn,
 
     err_code = hbdbus_call_procedure_and_wait (conn,
             info->builtin_endpoint,
-            "listProcedures",
+            HBDBUS_METHOD_LISTPROCEDURES,
             endpoint,
             HBDBUS_DEF_TIME_EXPECTED,
             &ret_code, &ret_value);
@@ -794,7 +790,7 @@ static void on_cmd_list_events (hbdbus_conn *conn,
 
     err_code = hbdbus_call_procedure_and_wait (conn,
             info->builtin_endpoint,
-            "listEvents",
+            HBDBUS_METHOD_LISTEVENTS,
             endpoint,
             HBDBUS_DEF_TIME_EXPECTED,
             &ret_code, &ret_value);
@@ -846,7 +842,7 @@ static void on_cmd_list_subscribers (hbdbus_conn *conn,
 
     err_code = hbdbus_call_procedure_and_wait (conn,
             info->builtin_endpoint,
-            "listEventSubscribers",
+            HBDBUS_METHOD_LISTEVENTSUBSCRIBERS,
             param_buff,
             HBDBUS_DEF_TIME_EXPECTED,
             &ret_code, &ret_value);
@@ -1438,7 +1434,7 @@ static int test_basic_functions (hbdbus_conn *conn)
     /* call echo method of the builtin endpoint */
     err_code = hbdbus_call_procedure_and_wait (conn,
             info->builtin_endpoint,
-            "echo",
+            HBDBUS_METHOD_ECHO,
             "I am here",
             HBDBUS_DEF_TIME_EXPECTED,
             &ret_code, &ret_value);
@@ -1464,14 +1460,14 @@ static int test_basic_functions (hbdbus_conn *conn)
     HLOG_INFO ("error message for hbdbus_revoke_event: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
-    err_code = hbdbus_register_procedure_const (conn, "echo", NULL, NULL, my_echo_method);
+    err_code = hbdbus_register_procedure_const (conn, HBDBUS_METHOD_ECHO, NULL, NULL, my_echo_method);
     HLOG_INFO ("error message for hbdbus_register_procedure: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     /* call echo method of myself */
     err_code = hbdbus_call_procedure_and_wait (conn,
             info->self_endpoint,
-            "echo",
+            HBDBUS_METHOD_ECHO,
             "I AM HERE",
             HBDBUS_DEF_TIME_EXPECTED,
             &ret_code, &ret_value);
@@ -1485,7 +1481,7 @@ static int test_basic_functions (hbdbus_conn *conn)
                 ret_value ? ret_value : "(null)", ret_code);
     }
 
-    err_code = hbdbus_revoke_procedure (conn, "echo");
+    err_code = hbdbus_revoke_procedure (conn, HBDBUS_METHOD_ECHO);
     HLOG_INFO ("error message for hbdbus_revoke_procedure: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
@@ -1512,11 +1508,11 @@ static void on_new_broken_endpoint (hbdbus_conn* conn,
         return;
     }
 
-    if (strcasecmp (from_bubble, "NEWENDPOINT") == 0) {
+    if (strcasecmp (from_bubble, HBDBUS_BUBBLE_NEWENDPOINT) == 0) {
         fputs ("NEW ENDPOINT:\n", stderr);
         dump_json_object(stderr, jo);
     }
-    else if (strcasecmp (from_bubble, "BROKENENDPOINT") == 0) {
+    else if (strcasecmp (from_bubble, HBDBUS_BUBBLE_BROKENENDPOINT) == 0) {
         fputs ("LOST ENDPOINT:\n", stderr);
         dump_json_object(stderr, jo);
     }
@@ -1632,7 +1628,7 @@ int main (int argc, char **argv)
 
     the_client.dump_stm = purc_rwstream_new_for_dump(stderr, cb_stdio_write);
 
-    kvlist_init (&the_client.ret_value_list, NULL);
+    kvlist_init (&the_client.ret_value_list, NULL, true);
     the_client.running = true;
     the_client.last_sigint_time = 0;
     if (setup_signals () < 0)
@@ -1670,13 +1666,13 @@ int main (int argc, char **argv)
     format_current_time (curr_time, sizeof (curr_time) - 1);
 
     int err_code;
-    err_code = hbdbus_register_procedure_const (conn, "echo", NULL, NULL, my_echo_method);
+    err_code = hbdbus_register_procedure_const (conn, HBDBUS_METHOD_ECHO, NULL, NULL, my_echo_method);
     HLOG_INFO ("error message for hbdbus_register_procedure: %s (%d)\n",
             hbdbus_get_err_message (err_code), err_code);
 
     err_code = hbdbus_call_procedure (conn,
             the_client.self_endpoint,
-            "echo",
+            HBDBUS_METHOD_ECHO,
             "I AM HERE AGAIN",
             HBDBUS_DEF_TIME_EXPECTED,
             my_echo_result, NULL);
@@ -1697,14 +1693,14 @@ int main (int argc, char **argv)
             hbdbus_get_err_message (err_code), err_code);
 
     if ((err_code = hbdbus_subscribe_event (conn,
-                    the_client.builtin_endpoint, "NEWENDPOINT",
+                    the_client.builtin_endpoint, HBDBUS_BUBBLE_NEWENDPOINT,
                     on_new_broken_endpoint))) {
         fprintf (stderr, "Failed to subscribe builtin event `NEWENDPOINT` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
     }
 
     if ((err_code = hbdbus_subscribe_event (conn,
-                    the_client.builtin_endpoint, "BROKENENDPOINT",
+                    the_client.builtin_endpoint, HBDBUS_BUBBLE_BROKENENDPOINT,
                     on_new_broken_endpoint))) {
         fprintf (stderr, "Failed to subscribe builtin event `BROKENENDPOINT` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
@@ -1762,13 +1758,13 @@ int main (int argc, char **argv)
     } while (the_client.running);
 
     if ((err_code = hbdbus_unsubscribe_event (conn, the_client.builtin_endpoint,
-                    "NEWENDPOINT"))) {
+                    HBDBUS_BUBBLE_NEWENDPOINT))) {
         fprintf (stderr, "Failed to unsubscribe builtin event `NEWENDPOINT` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
     }
 
     if ((err_code = hbdbus_unsubscribe_event (conn, the_client.builtin_endpoint,
-                    "BROKENENDPOINT"))) {
+                    HBDBUS_BUBBLE_BROKENENDPOINT))) {
         fprintf (stderr, "Failed to unsubscribe builtin event `BROKENENDPOINT` (%d): %s\n",
                 err_code, hbdbus_get_err_message (err_code));
     }

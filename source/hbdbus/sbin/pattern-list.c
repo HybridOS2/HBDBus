@@ -180,7 +180,7 @@ bool match_pattern (pattern_list *pl, const char* string,
     struct kvlist kv;
     struct list_head *node;
 
-    kvlist_init (&kv, NULL);
+    kvlist_init (&kv, NULL, false);
 
     va_start (ap, nr_vars);
     while (nr_vars > 0) {
