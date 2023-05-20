@@ -91,6 +91,20 @@ hbdbus_error_handler hbdbus_conn_set_error_handler (hbdbus_conn *conn,
     return old;
 }
 
+hbdbus_event_handler hbdbus_conn_get_system_event_handler (hbdbus_conn *conn)
+{
+    return conn->system_event_handler;
+}
+
+hbdbus_event_handler hbdbus_conn_set_system_event_handler (hbdbus_conn *conn,
+        hbdbus_event_handler system_event_handler)
+{
+    hbdbus_event_handler old = conn->system_event_handler;
+    conn->system_event_handler = system_event_handler;
+
+    return old;
+}
+
 void *hbdbus_conn_get_user_data (hbdbus_conn *conn)
 {
     return conn->user_data;
