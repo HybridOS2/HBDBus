@@ -1723,8 +1723,10 @@ size_t fire_system_event (BusServer* bus_srv, int bubble_type,
             kvlist_for_each (&bus_srv->endpoint_list, name, data) {
                 BusEndpoint* edpt = *(BusEndpoint **)data;
 
-                send_packet_to_endpoint (bus_srv, edpt, packet_buff, n);
-                nr_fired++;
+                if (edpt != bus_srv->endpoint_builtin) {
+                    send_packet_to_endpoint (bus_srv, edpt, packet_buff, n);
+                    nr_fired++;
+                }
             }
         }
         else {

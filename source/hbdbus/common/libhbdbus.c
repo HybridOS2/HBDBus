@@ -56,6 +56,7 @@ struct _hbdbus_conn {
     struct kvlist subscribed_list;
 
     hbdbus_error_handler error_handler;
+    hbdbus_event_handler system_event_handler;
     void *user_data;
 };
 
@@ -1868,6 +1869,7 @@ static int dispatch_event_packet (hbdbus_conn* conn, const purc_variant_t jo)
     purc_variant_t jo_tmp;
     const char* from_endpoint = NULL;
     const char* from_bubble = NULL;
+    const char* event_id = NULL;
     const char* bubble_data;
     char event_name [HBDBUS_LEN_ENDPOINT_NAME + HBDBUS_LEN_BUBBLE_NAME + 2];
     hbdbus_event_handler event_handler;
@@ -1888,6 +1890,13 @@ static int dispatch_event_packet (hbdbus_conn* conn, const purc_variant_t jo)
         return HBDBUS_EC_PROTOCOL;
     }
 
+    if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "eventId")) &&
+            (event_id = purc_variant_get_string_const(jo_tmp))) {
+    }
+    else {
+        return HBDBUS_EC_PROTOCOL;
+    }
+
     if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "bubbleData")) &&
             (bubble_data = purc_variant_get_string_const(jo_tmp))) {
     }
@@ -1900,7 +1909,19 @@ static int dispatch_event_packet (hbdbus_conn* conn, const purc_variant_t jo)
     event_name[n] = '\0';
     strcpy(event_name + n, from_bubble);
     if ((data = kvlist_get(&conn->subscribed_list, event_name)) == NULL) {
-        fprintf (stderr, "Got a unsubscribed event: %s\n", event_name);
+        if (strcmp(event_id, HBDBUS_SYSTEM_EVENT_ID) == 0) {
+            if (conn->system_event_handler) {
+                conn->system_event_handler(conn, from_endpoint, from_bubble,
+                        bubble_data);
+            }
+            else {
+                HLOG_WARN("Got an unhandled system event: %s\n", event_name);
+            }
+        }
+        else {
+            HLOG_ERR("Got an unsubscribed event: %s\n", event_name);
+        }
+
         return HBDBUS_EC_UNKNOWN_EVENT;
     }
     else {

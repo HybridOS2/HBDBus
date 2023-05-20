@@ -569,7 +569,7 @@ run_server (void)
 
     while (the_server.running &&
             (the_server.shutdown_time == 0 ||
-             time(NULL) > the_server.shutdown_time)) {
+             time(NULL) < the_server.shutdown_time)) {
         int nfds, n;
 
         nfds = epoll_wait (the_server.epollfd, events, MAX_EVENTS, 500);

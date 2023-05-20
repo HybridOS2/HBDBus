@@ -144,10 +144,13 @@ builtin_method_terminate (BusServer *bus_srv,
     if ((jo_tmp = purc_variant_object_get_by_ckey(jo, "afterSeconds")) &&
         (purc_variant_cast_to_uint32(jo_tmp, &seconds, false))) {
         bus_srv->shutdown_time = time(NULL) + seconds;
+        HLOG_INFO("System will shut down in %u seconds\n", seconds);
     }
     else {
         goto failed;
     }
+
+    purc_variant_unref(jo);
 
     char buf[128];
     sprintf(buf, "%lu", (unsigned long)bus_srv->shutdown_time);
@@ -160,7 +163,7 @@ builtin_method_terminate (BusServer *bus_srv,
 
 failed:
     if (jo)
-        purc_variant_unref (jo);
+        purc_variant_unref(jo);
 
     *ret_code = PCRDR_SC_BAD_REQUEST;
     return NULL;

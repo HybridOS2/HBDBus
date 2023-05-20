@@ -50,6 +50,8 @@
 #define HBDBUS_RUNNER_BUILITIN           "builtin"
 #define HBDBUS_RUNNER_CMDLINE            "cmdline"
 
+#define HBDBUS_SYSTEM_EVENT_ID           "NOTIFICATION"
+
 #define HBDBUS_METHOD_REGISTERPROCEDURE     "registerProcedure"
 #define HBDBUS_METHOD_REVOKEPROCEDURE       "revokeProcedure"
 #define HBDBUS_METHOD_REGISTEREVENT         "registerEvent"
@@ -410,6 +412,44 @@ void *hbdbus_conn_get_user_data(hbdbus_conn* conn);
 void *hbdbus_conn_set_user_data(hbdbus_conn* conn, void* user_data);
 
 /**
+ * The prototype of an event handler.
+ *
+ * @param conn: the pointer to the HBDBus connection.
+ * @param from_endpoint: the endpoint name of the event.
+ * @param from_bubble: the bubble name of the event.
+ * @param bubble_data: the bubble data (a string) of the event.
+ *
+ * Since: 1.0
+ */
+typedef void (*hbdbus_event_handler)(hbdbus_conn* conn,
+        const char *from_endpoint, const char *from_bubble,
+        const char *bubble_data);
+
+/**
+ * Get the system event handler associated with the connection.
+ *
+ * @param conn: the pointer to the HBDBus connection.
+ *
+ * Returns the current system event handler associated with the HBDBus connection.
+ *
+ * Since: 2.0
+ */
+hbdbus_event_handler hbdbus_conn_get_system_event_handler(hbdbus_conn* conn);
+
+/**
+ * Set the system event handler associated with the connection.
+ *
+ * @param conn: the pointer to the HBDBus connection.
+ * @param system_event_handler: the new system event handler.
+ *
+ * Sets the user data of the HBDBus connection, and returns the old one.
+ *
+ * Since: 2.0
+ */
+hbdbus_event_handler hbdbus_conn_set_system_event_handler(hbdbus_conn* conn,
+        hbdbus_event_handler system_event_handler);
+
+/**
  * Get the last return code from the server.
  *
  * @param conn: the pointer to the HBDBus connection.
@@ -735,20 +775,6 @@ int hbdbus_revoke_event(hbdbus_conn* conn, const char *bubble_name);
  */
 int hbdbus_fire_event(hbdbus_conn* conn,
         const char *bubble_name, const char *bubble_data);
-
-/**
- * The prototype of an event handler.
- *
- * @param conn: the pointer to the HBDBus connection.
- * @param from_endpoint: the endpoint name of the event.
- * @param from_bubble: the bubble name of the event.
- * @param bubble_data: the bubble data (a string) of the event.
- *
- * Since: 1.0
- */
-typedef void (*hbdbus_event_handler)(hbdbus_conn* conn,
-        const char *from_endpoint, const char *from_bubble,
-        const char *bubble_data);
 
 /**
  * Subscribe an event.
