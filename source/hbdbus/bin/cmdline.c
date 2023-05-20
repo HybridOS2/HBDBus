@@ -435,7 +435,6 @@ static void on_cmd_call (hbdbus_conn *conn,
     else {
         fprintf (stderr, "Got result from procedure %s/method/%s with parameter %s: \n%s\n",
                 endpoint, method, param, ret_value);
-
         free (ret_value);
     }
 }
@@ -1446,6 +1445,8 @@ static int test_basic_functions (hbdbus_conn *conn)
     else {
         HLOG_INFO ("Got the result for `echo` method: %s (%d)\n",
                 ret_value ? ret_value : "(null)", ret_code);
+        if (ret_value)
+            free (ret_value);
     }
 
     err_code = hbdbus_register_event (conn, "alarm", "*", "*");
@@ -1479,6 +1480,8 @@ static int test_basic_functions (hbdbus_conn *conn)
     else {
         HLOG_INFO ("Got the result for `echo` method: %s (%d)\n",
                 ret_value ? ret_value : "(null)", ret_code);
+        if (ret_value)
+            free (ret_value);
     }
 
     err_code = hbdbus_revoke_procedure (conn, HBDBUS_METHOD_ECHO);
