@@ -321,7 +321,7 @@ static int send_auth_info (hbdbus_conn *conn, const char* ch_code)
     free(sig);
     sig = NULL;
 
-    n = snprintf(buff, sizeof (buff), 
+    n = snprintf(buff, sizeof (buff),
             "{"
             "\"packetType\":\"auth\","
             "\"protocolName\":\"%s\","
@@ -1123,7 +1123,7 @@ int hbdbus_ping_server (hbdbus_conn* conn)
     return err_code;
 }
 
-static int wait_for_specific_call_result_packet (hbdbus_conn* conn, 
+static int wait_for_specific_call_result_packet (hbdbus_conn* conn,
         const char* call_id, int time_expected, int *ret_code, char** ret_value);
 
 int hbdbus_call_procedure_and_wait (hbdbus_conn* conn, const char* endpoint,
@@ -1200,7 +1200,7 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
     if (kvlist_get (&conn->method_list, method_name))
         return HBDBUS_EC_DUPLICATED;
 
-    n = snprintf (param_buff, sizeof (param_buff), 
+    n = snprintf (param_buff, sizeof (param_buff),
             "{"
             "\"methodName\": \"%s\","
             "\"forHost\": \"%s\","
@@ -1265,7 +1265,7 @@ int hbdbus_revoke_procedure (hbdbus_conn* conn, const char* method_name)
     if (!kvlist_get (&conn->method_list, method_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    n = snprintf (param_buff, sizeof (param_buff), 
+    n = snprintf (param_buff, sizeof (param_buff),
             "{"
             "\"methodName\": \"%s\""
             "}",
@@ -1370,7 +1370,7 @@ int hbdbus_revoke_event (hbdbus_conn* conn, const char* bubble_name)
     if (!kvlist_get (&conn->bubble_list, bubble_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    n = snprintf (param_buff, sizeof (param_buff), 
+    n = snprintf (param_buff, sizeof (param_buff),
             "{"
             "\"bubbleName\": \"%s\""
             "}",
@@ -1427,7 +1427,7 @@ int hbdbus_subscribe_event (hbdbus_conn* conn,
     if (kvlist_get (&conn->subscribed_list, event_name))
         return HBDBUS_EC_INVALID_VALUE;
 
-    n = snprintf (param_buff, sizeof (param_buff), 
+    n = snprintf (param_buff, sizeof (param_buff),
             "{"
             "\"endpointName\": \"%s\","
             "\"bubbleName\": \"%s\""
@@ -1538,7 +1538,7 @@ int hbdbus_call_procedure (hbdbus_conn* conn,
 
     purc_generate_unique_id (call_id_buf, "call");
 
-    n = snprintf (buff, sizeof (buff), 
+    n = snprintf (buff, sizeof (buff),
             "{"
             "\"packetType\": \"call\","
             "\"callId\": \"%s\","
@@ -1618,7 +1618,7 @@ int hbdbus_fire_event (hbdbus_conn* conn,
         escaped_data = NULL;
 
     purc_generate_unique_id (event_id, "event");
-    n = snprintf (packet_buff, sz_packet_buff, 
+    n = snprintf (packet_buff, sz_packet_buff,
             "{"
             "\"packetType\": \"event\","
             "\"eventId\": \"%s\","
@@ -1761,7 +1761,7 @@ done:
         free(ret_value);
 
     ret_code = hbdbus_errcode_to_retcode(err_code);
-    n = snprintf(packet_buff, sz_packet_buff, 
+    n = snprintf(packet_buff, sz_packet_buff,
             "{"
             "\"packetType\": \"result\","
             "\"resultId\": \"%s\","
