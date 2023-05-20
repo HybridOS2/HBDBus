@@ -375,7 +375,7 @@ static void on_lost_event_generator (hbdbus_conn* conn,
 
     jo = purc_variant_make_from_json_string(bubble_data, strlen(bubble_data));
     if (jo == NULL) {
-        HLOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTGENERATOR`\n");
+        HLOG_ERR ("Failed to parse bubble data for bubble `LostEventGenerator`\n");
         return;
     }
 
@@ -413,7 +413,7 @@ static void on_lost_event_bubble (hbdbus_conn* conn,
 
     jo = purc_variant_make_from_json_string(bubble_data, strlen(bubble_data));
     if (jo == NULL) {
-        HLOG_ERR ("Failed to parse bubble data for bubble `LOSTEVENTBUBBLE`\n");
+        HLOG_ERR ("Failed to parse bubble data for bubble `LostEventBubble`\n");
         return;
     }
 
@@ -481,11 +481,11 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, event_name);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    strcat (event_name, "LOSTEVENTGENERATOR");
+    strcat (event_name, HBDBUS_BUBBLE_LOSTEVENTGENERATOR);
 
     event_handler = on_lost_event_generator;
     if (!kvlist_set (&conn->subscribed_list, event_name, &event_handler)) {
-        HLOG_ERR ("Failed to register callback for system event `LOSTEVENTGENERATOR`!\n");
+        HLOG_ERR ("Failed to register callback for system event `LostEventGenerator`!\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
@@ -493,11 +493,11 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
             HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, event_name);
     event_name [n++] = '/';
     event_name [n] = '\0';
-    strcat (event_name, "LOSTEVENTBUBBLE");
+    strcat (event_name, HBDBUS_BUBBLE_LOSTEVENTBUBBLE);
 
     event_handler = on_lost_event_bubble;
     if (!kvlist_set (&conn->subscribed_list, event_name, &event_handler)) {
-        HLOG_ERR ("Failed to register callback for system event `LOSTEVENTBUBBLE`!\n");
+        HLOG_ERR ("Failed to register callback for system event `LostEventBubble`!\n");
         return HBDBUS_EC_UNEXPECTED;
     }
 
@@ -629,7 +629,7 @@ int hbdbus_connect_via_unix_socket (const char* path_to_socket,
     kvlist_init (&(*conn)->method_list, mhi_get_len, true);
     kvlist_init (&(*conn)->bubble_list, NULL, true);
     kvlist_init (&(*conn)->call_list, NULL, false);
-    kvlist_init (&(*conn)->subscribed_list, NULL, false);
+    kvlist_init (&(*conn)->subscribed_list, NULL, true);
 
     /* try to read challenge code */
     if ((err_code = get_challenge_code (*conn, &ch_code)))

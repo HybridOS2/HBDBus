@@ -120,7 +120,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
         MethodInfo* method;
 
         method = *(MethodInfo **)data;
-        HLOG_INFO ("Revoke procedure: edpt://%s/%s/%s/%s (%p)\n",
+        HLOG_INFO ("Revoke procedure: edpt://%s/%s/%s/method/%s (%p)\n",
                 endpoint->host_name, endpoint->app_name, endpoint->runner_name,
                 method_name, method);
         cleanup_pattern_list (&method->host_patt_list);
@@ -135,7 +135,7 @@ int del_endpoint (BusServer* bus_srv, BusEndpoint* endpoint, int cause)
         BubbleInfo* bubble;
 
         bubble = *(BubbleInfo **)data;
-        HLOG_INFO ("Revoke event: edpt://%s/%s/%s/%s (%p)\n",
+        HLOG_INFO ("Revoke event: edpt://%s/%s/%s/bubble/%s (%p)\n",
                 endpoint->host_name, endpoint->app_name, endpoint->runner_name,
                 bubble_name, bubble);
         cleanup_pattern_list (&bubble->host_patt_list);
@@ -1372,7 +1372,7 @@ int register_procedure (BusServer *bus_srv, BusEndpoint* endpoint,
         goto failed;
     }
 
-    HLOG_INFO ("New procedure registered: edpt://%s/%s/%s/%s (%p)\n",
+    HLOG_INFO ("New procedure registered: edpt://%s/%s/%s/method/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
             method_name, info);
     return PCRDR_SC_OK;
@@ -1454,7 +1454,7 @@ int register_event (BusServer *bus_srv, BusEndpoint* endpoint,
         goto failed;
     }
 
-    HLOG_INFO ("New event registered: edpt://%s/%s/%s/%s (%p)\n",
+    HLOG_INFO ("New event registered: edpt://%s/%s/%s/bubble/%s (%p)\n",
             endpoint->host_name, endpoint->app_name, endpoint->runner_name,
             bubble_name, info);
     return PCRDR_SC_OK;

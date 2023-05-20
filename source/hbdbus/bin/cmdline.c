@@ -130,11 +130,11 @@ static struct cmd_info {
         AT_NONE, AT_BUBBLE, AT_NONE, AT_STRING, },
     { CMD_SUBSCRIBE,
         "subscribe", "sub",
-        "sub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT",
+        "sub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NewEndpoint",
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
     { CMD_UNSUBSCRIBE,
         "unsubscribe", "unsub",
-        "unsub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT" ,
+        "unsub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NewEndpoint" ,
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
     { CMD_LIST_ENDPOINTS,
         "listendpoints", "lep", 
@@ -150,7 +150,7 @@ static struct cmd_info {
         AT_ENDPOINT, AT_NONE, AT_NONE, AT_NONE, },
     { CMD_LIST_SUBSCRIBERS,
         "listsubscribers", "ls",
-        "ls edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NEWENDPOINT",
+        "ls edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NewEndpoint",
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
 };
 
@@ -424,7 +424,7 @@ static void on_cmd_call (hbdbus_conn *conn,
             &ret_code, &ret_value);
 
     if (err_code) {
-        fprintf (stderr, "Failed to call procedure %s/%s with parameter %s: %s\n",
+        fprintf (stderr, "Failed to call procedure %s/method/%s with parameter %s: %s\n",
                 endpoint, method, param, hbdbus_get_err_message (err_code));
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
@@ -433,7 +433,7 @@ static void on_cmd_call (hbdbus_conn *conn,
         }
     }
     else {
-        fprintf (stderr, "Got result from procedure %s/%s with parameter %s: \n%s\n",
+        fprintf (stderr, "Got result from procedure %s/method/%s with parameter %s: \n%s\n",
                 endpoint, method, param, ret_value);
 
         free (ret_value);
@@ -471,7 +471,7 @@ static void on_cmd_register_method (hbdbus_conn *conn,
     if (err_code) {
         struct run_info *info = hbdbus_conn_get_user_data (conn);
 
-        fprintf (stderr, "Failed to register method %s/%s with app access patterns %s: %s\n",
+        fprintf (stderr, "Failed to register procedure %s/method/%s with app access patterns %s: %s\n",
                 info->self_endpoint, method, param, hbdbus_get_err_message (err_code));
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
@@ -494,7 +494,7 @@ static void on_cmd_revoke_method (hbdbus_conn *conn,
     if (err_code) {
         struct run_info *info = hbdbus_conn_get_user_data (conn);
 
-        fprintf (stderr, "Failed to revoke method %s/%s: %s\n",
+        fprintf (stderr, "Failed to revoke procedure %s/method/%s: %s\n",
                 info->self_endpoint, method, hbdbus_get_err_message (err_code));
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
@@ -537,7 +537,7 @@ static void on_cmd_register_event (hbdbus_conn *conn,
     if (err_code) {
         struct run_info *info = hbdbus_conn_get_user_data (conn);
 
-        fprintf (stderr, "Failed to register event %s/%s with app access patterns %s: %s\n",
+        fprintf (stderr, "Failed to register event %s/bubble/%s with app access patterns %s: %s\n",
                 info->self_endpoint, bubble, param, hbdbus_get_err_message (err_code));
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
@@ -560,7 +560,7 @@ static void on_cmd_revoke_event (hbdbus_conn *conn,
     if (err_code) {
         struct run_info *info = hbdbus_conn_get_user_data (conn);
 
-        fprintf (stderr, "Failed to revoke event %s/%s: %s\n",
+        fprintf (stderr, "Failed to revoke event %s/bubble/%s: %s\n",
                 info->self_endpoint, bubble, hbdbus_get_err_message (err_code));
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
@@ -583,7 +583,7 @@ static void on_cmd_fire (hbdbus_conn *conn,
     if (err_code) {
         struct run_info *info = hbdbus_conn_get_user_data (conn);
 
-        fprintf (stderr, "Failed to fire event %s/%s with parameter %s: %s\n",
+        fprintf (stderr, "Failed to fire event %s/bubble/%s with parameter %s: %s\n",
                 info->self_endpoint, bubble, param, hbdbus_get_err_message (err_code));
         if (err_code == HBDBUS_EC_SERVER_ERROR) {
             int ret_code = hbdbus_conn_get_last_ret_code (conn);
@@ -601,7 +601,7 @@ static void cb_generic_event (hbdbus_conn* conn,
         const char* bubble_data)
 {
     (void)conn;
-    fprintf (stderr, "\nGot an event from (%s/%s):\n%s\n",
+    fprintf (stderr, "\nGot an event from (%s/bubble/%s):\n%s\n",
             from_endpoint, from_bubble, bubble_data);
 }
 
@@ -614,12 +614,12 @@ static void on_cmd_subscribe (hbdbus_conn *conn,
 
     if (err_code) {
         int ret_code = hbdbus_conn_get_last_ret_code (conn);
-        fprintf (stderr, "Failed to subscribe event: %s/%s: %s (%d)\n",
+        fprintf (stderr, "Failed to subscribe event: %s/bubble/%s: %s (%d)\n",
                 endpoint, bubble,
                 hbdbus_get_err_message (err_code), ret_code);
     }
     else {
-        fprintf (stderr, "Subscribed event: %s/%s\n",
+        fprintf (stderr, "Subscribed event: %s/bubble/%s\n",
                 endpoint, bubble);
     }
 }
@@ -633,12 +633,12 @@ static void on_cmd_unsubscribe (hbdbus_conn *conn,
 
     if (err_code) {
         int ret_code = hbdbus_conn_get_last_ret_code (conn);
-        fprintf (stderr, "Failed to unsubscribe event: %s/%s: %s (%d)\n",
+        fprintf (stderr, "Failed to unsubscribe event: %s/bubble/%s: %s (%d)\n",
                 endpoint, bubble,
                 hbdbus_get_err_message (err_code), ret_code);
     }
     else {
-        fprintf (stderr, "Unsubscribed event: %s/%s\n",
+        fprintf (stderr, "Unsubscribed event: %s/bubble/%s\n",
                 endpoint, bubble);
     }
 }
@@ -848,13 +848,13 @@ static void on_cmd_list_subscribers (hbdbus_conn *conn,
             &ret_code, &ret_value);
 
     if (err_code) {
-        fprintf (stderr, "Failed to call listEventSubscribers for endpoint bubble %s/%s: %s\n",
+        fprintf (stderr, "Failed to call listEventSubscribers for event %s/bubble/%s: %s\n",
                 endpoint, bubble, pcrdr_get_ret_message (ret_code));
     }
     else {
         purc_variant_t jo;
 
-        fprintf (stderr, "Subscribers of %s/%s:\n", endpoint, bubble);
+        fprintf (stderr, "Subscribers of %s/bubble/%s:\n", endpoint, bubble);
 
         jo = purc_variant_make_from_json_string (ret_value,
                 strlen (ret_value));
