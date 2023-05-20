@@ -130,9 +130,10 @@ enum {
     SBT_BROKEN_ENDPOINT,
     SBT_LOST_EVENT_GENERATOR,
     SBT_LOST_EVENT_BUBBLE,
+    SBT_SYSTEM_SHUTTING_DOWN,
 };
 
-bool fire_system_event (BusServer* bus_srv, int bubble_type,
+size_t fire_system_event (BusServer* bus_srv, int bubble_type,
         BusEndpoint* cause, BusEndpoint* to, const char* add_msg);
 
 typedef struct pending_call_ {

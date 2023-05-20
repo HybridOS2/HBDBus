@@ -567,7 +567,9 @@ run_server (void)
         }
     }
 
-    while (the_server.running) {
+    while (the_server.running &&
+            (the_server.shutdown_time == 0 ||
+             time(NULL) > the_server.shutdown_time)) {
         int nfds, n;
 
         nfds = epoll_wait (the_server.epollfd, events, MAX_EVENTS, 500);
@@ -722,6 +724,7 @@ init_bus_server (void)
     char endpoint_name [HBDBUS_LEN_ENDPOINT_NAME + 1];
 
     /* TODO for host name */
+    the_server.shutdown_time = 0;
     the_server.running = true;
     the_server.server_name = strdup (HBDBUS_LOCALHOST);
     kvlist_init (&the_server.endpoint_list, NULL, false);

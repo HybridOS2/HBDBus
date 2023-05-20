@@ -50,7 +50,6 @@
 #define HBDBUS_RUNNER_BUILITIN           "builtin"
 #define HBDBUS_RUNNER_CMDLINE            "cmdline"
 
-#define HBDBUS_METHOD_ECHO                  "echo"
 #define HBDBUS_METHOD_REGISTERPROCEDURE     "registerProcedure"
 #define HBDBUS_METHOD_REVOKEPROCEDURE       "revokeProcedure"
 #define HBDBUS_METHOD_REGISTEREVENT         "registerEvent"
@@ -61,11 +60,14 @@
 #define HBDBUS_METHOD_LISTPROCEDURES        "listProcedures"
 #define HBDBUS_METHOD_LISTEVENTS            "listEvents"
 #define HBDBUS_METHOD_LISTEVENTSUBSCRIBERS  "listEventSubscribers"
+#define HBDBUS_METHOD_TERMINATE             "terminate"
+#define HBDBUS_METHOD_ECHO                  "echo"
 
 #define HBDBUS_BUBBLE_NEWENDPOINT           "NewEndpoint"
 #define HBDBUS_BUBBLE_BROKENENDPOINT        "BrokenEndpoint"
 #define HBDBUS_BUBBLE_LOSTEVENTGENERATOR    "LostEventGenerator"
 #define HBDBUS_BUBBLE_LOSTEVENTBUBBLE       "LostEventBubble"
+#define HBDBUS_BUBBLE_SYSTEMSHUTTINGDOWN    "SystemShuttingdown"
 
 #define HBDBUS_NOT_AVAILABLE             "<N/A>"
 

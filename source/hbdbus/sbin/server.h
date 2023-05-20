@@ -148,6 +148,7 @@ typedef struct BusServer_
 {
     int epollfd;
     unsigned int nr_endpoints;
+    time_t shutdown_time;
     bool running;
 
     char* server_name;

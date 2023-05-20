@@ -1589,3 +1589,184 @@ int unsubscribe_event (BusServer *bus_srv, BusEndpoint* endpoint,
     return PCRDR_SC_OK;
 }
 
+size_t fire_system_event (BusServer* bus_srv, int bubble_type,
+        BusEndpoint* cause, BusEndpoint* to, const char* add_msg)
+{
+    const char* bubble_name;
+    int n = 0;
+    size_t nr_fired = 0;
+    char packet_buff [HBDBUS_DEF_PACKET_BUFF_SIZE];
+    char bubble_data [HBDBUS_MIN_PACKET_BUFF_SIZE];
+    char* escaped_bubble_data = NULL;
+    bool to_all = false;
+
+    if (bubble_type == SBT_NEW_ENDPOINT) {
+        char peer_info [INET6_ADDRSTRLEN] = "";
+
+        if (cause->type == ET_UNIX_SOCKET) {
+            USClient* usc = (USClient *)cause->entity.client;
+            snprintf (peer_info, sizeof (peer_info), "%d", usc->pid);
+        }
+        else {
+            WSClient* wsc = (WSClient *)cause->entity.client;
+            strncpy (peer_info, wsc->remote_ip, /*sizeof (wsc->remote_ip)*/INET6_ADDRSTRLEN);
+        }
+
+        n = snprintf (bubble_data, sizeof (bubble_data),
+                "{"
+                "\"endpointType\":\"%s\","
+                "\"endpointName\":\"edpt://%s/%s/%s\","
+                "\"peerInfo\":\"%s\","
+                "\"totalEndpoints\":%d"
+                "}",
+                (cause->type == ET_UNIX_SOCKET) ? "unix" : "web",
+                cause->host_name, cause->app_name, cause->runner_name,
+                peer_info,
+                bus_srv->nr_endpoints);
+        bubble_name = HBDBUS_BUBBLE_NEWENDPOINT;
+    }
+    else if (bubble_type == SBT_BROKEN_ENDPOINT) {
+#if 0
+        char peer_info [INET6_ADDRSTRLEN] = "";
+
+        if (cause->type == ET_UNIX_SOCKET) {
+            USClient* usc = (USClient *)cause->entity.client;
+            snprintf (peer_info, sizeof (peer_info), "%d", usc->pid);
+        }
+        else {
+            WSClient* wsc = (WSClient *)cause->entity.client;
+            strncpy (peer_info, wsc->remote_ip, sizeof (wsc->remote_ip));
+        }
+#else
+        const char *peer_info  = "N/A";
+#endif
+
+        n = snprintf (bubble_data, sizeof (bubble_data),
+                "{"
+                "\"endpointType\":\"%s\","
+                "\"endpointName\":\"edpt://%s/%s/%s\","
+                "\"peerInfo\":\"%s\","
+                "\"brokenReason\":\"%s\","
+                "\"totalEndpoints\":%d"
+                "}",
+                (cause->type == ET_UNIX_SOCKET) ? "unix" : "web",
+                cause->host_name, cause->app_name, cause->runner_name,
+                peer_info, add_msg,
+                bus_srv->nr_endpoints);
+        bubble_name = HBDBUS_BUBBLE_BROKENENDPOINT;
+    }
+    else if (bubble_type == SBT_LOST_EVENT_GENERATOR) {
+        n = snprintf (bubble_data, sizeof (bubble_data),
+                "{"
+                "\"endpointName\":\"edpt://%s/%s/%s\","
+                "}",
+                cause->host_name, cause->app_name, cause->runner_name);
+        bubble_name = HBDBUS_BUBBLE_LOSTEVENTGENERATOR;
+    }
+    else if (bubble_type == SBT_LOST_EVENT_BUBBLE) {
+        n = snprintf (bubble_data, sizeof (bubble_data),
+                "{"
+                "\"endpointName\":\"edpt://%s/%s/%s\","
+                "\"bubbleName\":\"%s\""
+                "}",
+                cause->host_name, cause->app_name, cause->runner_name,
+                add_msg);
+        bubble_name = HBDBUS_BUBBLE_LOSTEVENTBUBBLE;
+    }
+    else if (bubble_type == SBT_SYSTEM_SHUTTING_DOWN) {
+        n = snprintf (bubble_data, sizeof (bubble_data),
+                "{"
+                "\"endpointName\":\"edpt://%s/%s/%s\","
+                "\"shutdownTime\":\"%s\""
+                "}",
+                cause->host_name, cause->app_name, cause->runner_name,
+                add_msg);
+        bubble_name = HBDBUS_BUBBLE_SYSTEMSHUTTINGDOWN;
+        to_all = true;
+    }
+    else {
+        return 0;
+    }
+
+    if (n > 0 && (size_t)n < sizeof (bubble_data)) {
+        escaped_bubble_data = pcutils_escape_string_for_json (bubble_data);
+        if (escaped_bubble_data == NULL)
+            return 0;
+    }
+    else {
+        return 0;
+    }
+
+    n = snprintf (packet_buff, sizeof (packet_buff),
+        "{"
+        "\"packetType\": \"event\","
+        "\"eventId\": \"NOTIFICATION\","
+        "\"fromEndpoint\": \"edpt://%s/%s/%s\","
+        "\"fromBubble\": \"%s\","
+        "\"bubbleData\": \"%s\","
+        "\"timeDiff\":0.0"
+        "}",
+        bus_srv->endpoint_builtin->host_name,
+        bus_srv->endpoint_builtin->app_name,
+        bus_srv->endpoint_builtin->runner_name,
+        bubble_name,
+        escaped_bubble_data);
+
+    if (n > 0 && (size_t)n < sizeof (packet_buff)) {
+        if (to) {
+            send_packet_to_endpoint (bus_srv, to, packet_buff, n);
+            nr_fired++;
+        }
+        else if (to_all) {
+            const char* name;
+            void *data;
+            kvlist_for_each (&bus_srv->endpoint_list, name, data) {
+                BusEndpoint* edpt = *(BusEndpoint **)data;
+
+                send_packet_to_endpoint (bus_srv, edpt, packet_buff, n);
+                nr_fired++;
+            }
+        }
+        else {
+            BubbleInfo *bubble;
+            const char* name;
+            void *next, *data;
+
+            data = kvlist_get (&bus_srv->endpoint_builtin->bubble_list, bubble_name);
+            if (data) {
+                bubble = *(BubbleInfo **)data;
+            }
+            else {
+                goto failed;
+            }
+
+            kvlist_for_each_safe (&bubble->subscriber_list, name, next, data) {
+                void *sub_data;
+
+                sub_data = kvlist_get (&bus_srv->endpoint_list, name);
+
+                // forward event to subscriber.
+                if (sub_data) {
+                    BusEndpoint* subscriber;
+
+                    subscriber = *(BusEndpoint **)sub_data;
+                    send_packet_to_endpoint (bus_srv, subscriber, packet_buff, n);
+                    nr_fired++;
+                }
+                else {
+                    kvlist_delete (&bubble->subscriber_list, name);
+                }
+            }
+        }
+    }
+    else {
+        HLOG_ERR ("The size of buffer for system event packet is too small.\n");
+    }
+
+failed:
+    if (escaped_bubble_data)
+        free (escaped_bubble_data);
+
+    return nr_fired;
+}
+
