@@ -679,8 +679,6 @@ static int on_result_list_procedures (hbdbus_conn* conn,
             first_time = false;
             purc_variant_unref (info->jo_endpoints);
         }
-        else {
-        }
 
         info->jo_endpoints = purc_variant_make_from_json_string (ret_value,
                 strlen (ret_value));
@@ -1773,7 +1771,8 @@ int main (int argc, char **argv)
     }
 
     // cleanup
-    purc_variant_unref (the_client.jo_endpoints);
+    if (the_client.jo_endpoints)
+        purc_variant_unref (the_client.jo_endpoints);
 
     {
         const char* name;
