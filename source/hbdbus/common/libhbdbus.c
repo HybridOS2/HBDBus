@@ -478,7 +478,7 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
     }
 
     n = purc_assemble_endpoint_name (srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, event_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, event_name);
     event_name [n++] = '/';
     event_name [n] = '\0';
     strcat (event_name, HBDBUS_BUBBLE_LOSTEVENTGENERATOR);
@@ -490,7 +490,7 @@ static int on_auth_passed (hbdbus_conn* conn, const purc_variant_t jo)
     }
 
     n = purc_assemble_endpoint_name (srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, event_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, event_name);
     event_name [n++] = '/';
     event_name [n] = '\0';
     strcat (event_name, HBDBUS_BUBBLE_LOSTEVENTBUBBLE);
@@ -1216,7 +1216,7 @@ static int my_register_procedure (hbdbus_conn* conn, const char* method_name,
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
     purc_assemble_endpoint_name (conn->srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
                     "registerProcedure", param_buff,
@@ -1278,7 +1278,7 @@ int hbdbus_revoke_procedure (hbdbus_conn* conn, const char* method_name)
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
     purc_assemble_endpoint_name (conn->srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
                     "revokeProcedure", param_buff,
@@ -1336,7 +1336,7 @@ int hbdbus_register_event (hbdbus_conn* conn, const char* bubble_name,
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
     purc_assemble_endpoint_name (conn->srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
                     "registerEvent", param_buff,
@@ -1383,7 +1383,7 @@ int hbdbus_revoke_event (hbdbus_conn* conn, const char* bubble_name)
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
     purc_assemble_endpoint_name (conn->srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, endpoint_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, endpoint_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, endpoint_name,
                     "revokeEvent", param_buff,
@@ -1442,7 +1442,7 @@ int hbdbus_subscribe_event (hbdbus_conn* conn,
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
     purc_assemble_endpoint_name (conn->srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, builtin_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, builtin_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, builtin_name,
                     "subscribeEvent", param_buff,
@@ -1497,7 +1497,7 @@ int hbdbus_unsubscribe_event (hbdbus_conn* conn,
         return HBDBUS_EC_TOO_SMALL_BUFF;
 
     purc_assemble_endpoint_name (conn->srv_host_name,
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN, builtin_name);
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN, builtin_name);
 
     if ((err_code = hbdbus_call_procedure_and_wait (conn, builtin_name,
                     "unsubscribeEvent", param_buff,

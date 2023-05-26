@@ -114,7 +114,7 @@ static struct cmd_info {
         AT_NONE, AT_BUBBLE, AT_NONE, AT_STRING, },
     { CMD_CALL,
         "call", "c", 
-        "call edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin echo Hi, there",
+        "call edpt://localhost/cn.fmsoft.hybridos.databus/builtin echo Hi, there",
         AT_ENDPOINT, AT_METHOD, AT_NONE, AT_STRING, },
     { CMD_REGISTER_EVENT,
         HBDBUS_METHOD_REGISTEREVENT, "rge", 
@@ -130,11 +130,11 @@ static struct cmd_info {
         AT_NONE, AT_BUBBLE, AT_NONE, AT_STRING, },
     { CMD_SUBSCRIBE,
         "subscribe", "sub",
-        "sub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NewEndpoint",
+        "sub edpt://localhost/cn.fmsoft.hybridos.databus/builtin NewEndpoint",
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
     { CMD_UNSUBSCRIBE,
         "unsubscribe", "unsub",
-        "unsub edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NewEndpoint" ,
+        "unsub edpt://localhost/cn.fmsoft.hybridos.databus/builtin NewEndpoint" ,
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
     { CMD_LIST_ENDPOINTS,
         "listendpoints", "lep", 
@@ -142,15 +142,15 @@ static struct cmd_info {
         AT_NONE, AT_NONE, AT_NONE, AT_NONE, },
     { CMD_LIST_PROCEDURES,
         "listprocedures", "lp",
-        "lp edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin",
+        "lp edpt://localhost/cn.fmsoft.hybridos.databus/builtin",
         AT_ENDPOINT, AT_NONE, AT_NONE, AT_NONE, },
     { CMD_LIST_EVENTS,
         "listevents", "le",
-        "le edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin",
+        "le edpt://localhost/cn.fmsoft.hybridos.databus/builtin",
         AT_ENDPOINT, AT_NONE, AT_NONE, AT_NONE, },
     { CMD_LIST_SUBSCRIBERS,
         "listsubscribers", "ls",
-        "ls edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin NewEndpoint",
+        "ls edpt://localhost/cn.fmsoft.hybridos.databus/builtin NewEndpoint",
         AT_ENDPOINT, AT_BUBBLE, AT_NONE, AT_NONE, },
 };
 
@@ -1351,7 +1351,7 @@ static const char *a_json =
     "\"packetType\": \"result\","
     "\"resultId\": \"RESULTXX-000000005FDAC261-000000001BED7939-0000000000000001\","
     "\"callId\": \"CALLXXXX-000000005FDAC261-000000001BEC6766-0000000000000000\","
-    "\"fromEndpoint\": \"edpt://localhost/cn.fmsoft.hybridos.hbdbus/builtin\","
+    "\"fromEndpoint\": \"edpt://localhost/cn.fmsoft.hybridos.databus/builtin\","
     "\"fromMethod\": \"echo\","
     "\"timeDiff\": 0.000047,"
     "\"timeConsumed\": 0.000000,"
@@ -1609,12 +1609,12 @@ int main (int argc, char **argv)
 
     if (!the_client.app_name[0] ||
             !purc_is_valid_app_name (the_client.app_name)) {
-        strcpy (the_client.app_name, HBDBUS_APP_HBDBUS);
+        strcpy (the_client.app_name, HBDBUS_APP_NAME);
     }
 
     if (!the_client.runner_name[0] ||
             !purc_is_valid_runner_name (the_client.runner_name)) {
-        strcpy (the_client.runner_name, HBDBUS_RUNNER_CMDLINE);
+        strcpy (the_client.runner_name, HBDBUS_RUN_CMDLINE);
     }
 
     ret = purc_init_ex(PURC_MODULE_EJSON, the_client.app_name,
@@ -1649,7 +1649,7 @@ int main (int argc, char **argv)
 
     purc_assemble_endpoint_name (
             hbdbus_conn_srv_host_name (conn),
-            HBDBUS_APP_HBDBUS, HBDBUS_RUNNER_BUILITIN,
+            HBDBUS_APP_NAME, HBDBUS_RUN_BUILITIN,
             the_client.builtin_endpoint);
 
     purc_assemble_endpoint_name (

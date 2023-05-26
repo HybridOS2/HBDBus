@@ -75,7 +75,7 @@ static const char* on_method_get_ball (hbdbus_conn* conn,
             return player->ball_content;
         }
     }
-    else if (strcasecmp (runner_name, HBDBUS_RUNNER_CMDLINE) == 0) {
+    else if (strcasecmp (runner_name, HBDBUS_RUN_CMDLINE) == 0) {
         /* must from the runner `cmdline` */
         struct player_info *player = hbdbus_conn_get_user_data (conn);
         return player->ball_content;
@@ -100,7 +100,7 @@ static int get_ball_from_previous_player (hbdbus_conn* conn, int pn, const char 
     if (pn == 0) {
         purc_assemble_endpoint_name (
                 hbdbus_conn_own_host_name (conn),
-                hbdbus_conn_app_name (conn), HBDBUS_RUNNER_CMDLINE,
+                hbdbus_conn_app_name (conn), HBDBUS_RUN_CMDLINE,
                 to_endpoint);
     }
     else {
@@ -186,7 +186,7 @@ static int main_of_player (struct run_info *info, int pn)
 
     purc_assemble_endpoint_name (
             hbdbus_conn_own_host_name (conn),
-            info->app_name, HBDBUS_RUNNER_CMDLINE,
+            info->app_name, HBDBUS_RUN_CMDLINE,
             cmdline_endpoint);
 
     player.running = true;
@@ -355,7 +355,7 @@ static char* on_method_notify_ready (hbdbus_conn* conn,
             HLOG_INFO ("Getting ball from %s...\n", from_endpoint);
             my_err_code = hbdbus_call_procedure_and_wait (conn,
                     from_endpoint, "getBall",
-                    HBDBUS_RUNNER_CMDLINE,
+                    HBDBUS_RUN_CMDLINE,
                     HBDBUS_DEF_TIME_EXPECTED,
                     &ret_code, &ret_value);
             if (my_err_code == 0 && ret_code == PCRDR_SC_OK) {

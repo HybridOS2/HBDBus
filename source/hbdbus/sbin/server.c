@@ -868,8 +868,8 @@ main (int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    retval = purc_init_ex(PURC_MODULE_EJSON, HBDBUS_APP_HBDBUS,
-            HBDBUS_RUNNER_DAEMON, NULL);
+    retval = purc_init_ex(PURC_MODULE_EJSON, HBDBUS_APP_NAME,
+            HBDBUS_RUN_MAIN, NULL);
     if (retval != PURC_ERROR_OK) {
         fprintf(stderr, "Failed to initialize the PurC instance: %s\n",
             purc_get_error_message(retval));

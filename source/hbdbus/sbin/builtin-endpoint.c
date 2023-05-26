@@ -886,7 +886,7 @@ failed:
 bool init_builtin_endpoint (BusServer *bus_srv, BusEndpoint* builtin)
 {
     if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_TERMINATE,
-            HBDBUS_LOCALHOST, HBDBUS_SYS_APPS,
+            HBDBUS_LOCALHOST, HBDBUS_SYSAPP_ANY,
             builtin_method_terminate) != PCRDR_SC_OK) {
         return false;
     }
@@ -934,7 +934,7 @@ bool init_builtin_endpoint (BusServer *bus_srv, BusEndpoint* builtin)
     }
 
     if (register_procedure (bus_srv, builtin, HBDBUS_METHOD_LISTENDPOINTS,
-            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS,
+            HBDBUS_PATTERN_ANY, HBDBUS_SYSAPP_ANY,
             builtin_method_list_endpoints) != PCRDR_SC_OK) {
         return false;
     }
@@ -958,12 +958,12 @@ bool init_builtin_endpoint (BusServer *bus_srv, BusEndpoint* builtin)
     }
 
     if (register_event (bus_srv, builtin, HBDBUS_BUBBLE_NEWENDPOINT,
-            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != PCRDR_SC_OK) {
+            HBDBUS_PATTERN_ANY, HBDBUS_SYSAPP_ANY) != PCRDR_SC_OK) {
         return false;
     }
 
     if (register_event (bus_srv, builtin, HBDBUS_BUBBLE_BROKENENDPOINT,
-            HBDBUS_PATTERN_ANY, HBDBUS_SYS_APPS) != PCRDR_SC_OK) {
+            HBDBUS_PATTERN_ANY, HBDBUS_SYSAPP_ANY) != PCRDR_SC_OK) {
         return false;
     }
 

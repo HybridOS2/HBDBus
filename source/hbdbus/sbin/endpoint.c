@@ -54,8 +54,8 @@ BusEndpoint* new_endpoint (BusServer* bus_srv, int type, void* client)
             endpoint->entity.client = NULL;
 
             endpoint->host_name = strdup (bus_srv->server_name);
-            endpoint->app_name = strdup (HBDBUS_APP_HBDBUS);
-            endpoint->runner_name = strdup (HBDBUS_RUNNER_BUILITIN);
+            endpoint->app_name = strdup (HBDBUS_APP_NAME);
+            endpoint->runner_name = strdup (HBDBUS_RUN_BUILITIN);
             break;
 
         case ET_UNIX_SOCKET:
@@ -408,7 +408,7 @@ int send_challenge_code (BusServer* bus_srv, BusEndpoint* endpoint)
     snprintf (key, sizeof (key), "hbdbus-%ld", random ());
 
     pcutils_hmac_sha256 (ch_code_bin,
-            (uint8_t*)HBDBUS_APP_HBDBUS, strlen (HBDBUS_APP_HBDBUS),
+            (uint8_t*)HBDBUS_APP_NAME, strlen (HBDBUS_APP_NAME),
             (uint8_t*)key, strlen (key));
     pcutils_bin2hex (ch_code_bin, PCUTILS_SHA256_DIGEST_SIZE, ch_code, false);
     ch_code [PCUTILS_SHA256_DIGEST_SIZE * 2] = 0;

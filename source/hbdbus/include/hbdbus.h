@@ -28,29 +28,30 @@
 #include "hbdbus-version.h"
 
 /* Constants */
-#define HBDBUS_PROTOCOL_NAME             "HBDBUS"
-#define HBDBUS_PROTOCOL_VERSION          200
-#define HBDBUS_MINIMAL_PROTOCOL_VERSION  200
+#define HBDBUS_PROTOCOL_NAME            "HBDBUS"
+#define HBDBUS_PROTOCOL_VERSION         200
+#define HBDBUS_MINIMAL_PROTOCOL_VERSION 200
 
-#define HBDBUS_US_PATH                   "/var/tmp/hbdbus.sock"
-#define HBDBUS_WS_PORT                   "7700"
-#define HBDBUS_WS_PORT_RESERVED          "7701"
+#define HBDBUS_US_PATH                  "/var/tmp/hbdbus.sock"
+#define HBDBUS_WS_PORT                  "7700"
+#define HBDBUS_WS_PORT_RESERVED         "7701"
 
-#define HBDBUS_PATTERN_VAR_SELF          "self"
-#define HBDBUS_PATTERN_VAR_OWNER         "owner"
+#define HBDBUS_PATTERN_VAR_SELF         "self"
+#define HBDBUS_PATTERN_VAR_OWNER        "owner"
 
-#define HBDBUS_PATTERN_ANY               "*"
-#define HBDBUS_PATTERN_SELF              "$self"
-#define HBDBUS_PATTERN_OWNER             "$owner"
+#define HBDBUS_PATTERN_ANY              "*"
+#define HBDBUS_PATTERN_SELF             "$self"
+#define HBDBUS_PATTERN_OWNER            "$owner"
 
-#define HBDBUS_LOCALHOST                 "localhost"
-#define HBDBUS_APP_HBDBUS                "cn.fmsoft.hybridos.hbdbus"
-#define HBDBUS_SYS_APPS                  "cn.fmsoft.hybridos.*"
-#define HBDBUS_RUNNER_DAEMON             "daemon"
-#define HBDBUS_RUNNER_BUILITIN           "builtin"
-#define HBDBUS_RUNNER_CMDLINE            "cmdline"
+#define HBDBUS_SYSAPP_ANY               "cn.fmsoft.hybridos.*"
 
-#define HBDBUS_SYSTEM_EVENT_ID           "NOTIFICATION"
+#define HBDBUS_LOCALHOST                "localhost"
+#define HBDBUS_APP_NAME                 "cn.fmsoft.hybridos.databus"
+#define HBDBUS_RUN_MAIN                 "main"
+#define HBDBUS_RUN_BUILITIN             "builtin"
+#define HBDBUS_RUN_CMDLINE              "cmdline"
+
+#define HBDBUS_SYSTEM_EVENT_ID          "NOTIFICATION"
 
 #define HBDBUS_METHOD_REGISTERPROCEDURE     "registerProcedure"
 #define HBDBUS_METHOD_REVOKEPROCEDURE       "revokeProcedure"
