@@ -128,6 +128,12 @@
 /* the maximal no responding time (90 seconds) */
 #define HBDBUS_MAX_NO_RESPONDING_TIME    90
 
+/* packet body types */
+enum {
+    PT_TEXT = 0,
+    PT_BINARY,
+};
+
 /* JSON packet types */
 enum {
     JPT_BAD_JSON = -1,
@@ -216,55 +222,6 @@ int hbdbus_errcode_to_retcode(int err_code);
  * Since: 1.0
  */
 bool hbdbus_is_valid_wildcard_pattern_list(const char *pattern_list);
-
-/**
- * Sign a data.
- *
- * @param app_name: the pointer to a string contains the app name.
- * @param data: the pointer to the data will be signed.
- * @param data_len: the length of the data in bytes.
- * @param sig: the pointer to a buffer for returning
- *      the pointer to the newly allocated signature if success.
- * @param sig_len: the pointer to an unsigned integer for returning the length
- *      of the signature.
- *
- * Signs the specified data with the private key of a specific app
- * and returns the signature.
- * 
- * Note that the caller is responsible for releasing the buffer of
- * the signature.
- *
- * Returns: zero if success; an error code (<0) otherwise.
- *
- * Since: 1.0
- */
-int hbdbus_sign_data(const char *app_name,
-        const unsigned char *data, unsigned int data_len,
-        unsigned char **sig, unsigned int *sig_len);
-
-/**
- * Verify a signature.
- *
- * @param app_name: the pointer to a string contains the app name.
- * @param data: the pointer to the data will be verified.
- * @param data_len: the length of the data in bytes.
- * @param sig: the pointer to the signature.
- * @param sig_len: the length of the signature.
- *
- * Signs the specified data with the private key of a specific app
- * and returns the signature.
- * 
- * Note that the caller is responsible for releasing the buffer of
- * the signature.
- *
- * Returns: 1 if verified, 0 if cannot verify the signature; an error code
- * which is less than 0 means something wrong.
- *
- * Since: 1.0
- */
-int hbdbus_verify_signature(const char *app_name,
-        const unsigned char *data, unsigned int data_len,
-        const unsigned char *sig, unsigned int sig_len);
 
 /**
  * Parse a JSON string to a hbdbus_json object.

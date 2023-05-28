@@ -21,9 +21,6 @@ list(APPEND HBDBus_SOURCES
     "${HBDBUS_DIR}/common/avl.c"
     "${HBDBUS_DIR}/common/avl-cmp.c"
     "${HBDBUS_DIR}/common/kvlist.c"
-    "${HBDBUS_DIR}/common/sign_verify_rsa_sha256.c"
-    "${HBDBUS_DIR}/common/sign_verify_hmac_sha256.c"
-    "${HBDBUS_DIR}/common/sign_verify_dummy.c"
 )
 
 set(HBDBus_LIBRARIES)
@@ -104,9 +101,6 @@ list(APPEND hbdbusd_SOURCES
     "${HBDBUS_DIR}/common/kvlist.c"
     "${HBDBUS_DIR}/common/avl.c"
     "${HBDBUS_DIR}/common/avl-cmp.c"
-    "${HBDBUS_DIR}/common/sign_verify_rsa_sha256.c"
-    "${HBDBUS_DIR}/common/sign_verify_hmac_sha256.c"
-    "${HBDBUS_DIR}/common/sign_verify_dummy.c"
     "${HBDBUS_DIR}/sbin/websocket.c"
     "${HBDBUS_DIR}/sbin/unixsocket.c"
     "${HBDBUS_DIR}/sbin/server.c"
@@ -148,9 +142,6 @@ list(APPEND hbdbuscl_SOURCES
     "${HBDBUS_DIR}/common/avl.c"
     "${HBDBUS_DIR}/common/avl-cmp.c"
     "${HBDBUS_DIR}/common/kvlist.c"
-    "${HBDBUS_DIR}/common/sign_verify_rsa_sha256.c"
-    "${HBDBUS_DIR}/common/sign_verify_hmac_sha256.c"
-    "${HBDBUS_DIR}/common/sign_verify_dummy.c"
     "${HBDBUS_DIR}/bin/cmdline.c"
     "${HBDBUS_DIR}/bin/drum-game.c"
 )

@@ -525,7 +525,7 @@ static int authenticate_endpoint (BusServer* bus_srv, BusEndpoint* endpoint,
         return PCRDR_SC_BAD_REQUEST;
     }
 
-    retv = hbdbus_verify_signature (app_name,
+    retv = pcutils_verify_signature (app_name,
             endpoint->sta_data, strlen (endpoint->sta_data),
             sig, sig_len);
     free (sig);

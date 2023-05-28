@@ -38,6 +38,7 @@
 #include "hbdbus.h"
 #include "internal/kvlist.h"
 #include "internal/log.h"
+#include "internal/unixsocket-defs.h"
 
 struct _hbdbus_conn {
     int type;
@@ -300,7 +301,7 @@ static int send_auth_info (hbdbus_conn *conn, const char* ch_code)
     unsigned int enc_sig_len;
     char buff [HBDBUS_DEF_PACKET_BUFF_SIZE];
 
-    err_code = hbdbus_sign_data (conn->app_name,
+    err_code = pcutils_sign_data (conn->app_name,
             (const unsigned char *)ch_code, strlen (ch_code),
             &sig, &sig_len);
     if (err_code) {

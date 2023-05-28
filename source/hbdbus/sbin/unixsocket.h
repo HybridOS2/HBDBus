@@ -28,6 +28,7 @@
 #include <unistd.h>
 
 #include "internal/list.h"
+#include "internal/unixsocket-defs.h"
 
 typedef enum USSTATUS {
     US_OK = 0,
