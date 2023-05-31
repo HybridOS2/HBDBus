@@ -68,6 +68,31 @@ the app management of HybridOS, use the following options for `cmake`:
 $ cmake <directory_to_source_code>
 ```
 
+## Usage
+
+After building HBDBus, there will be two executables and one script:
+
+1. `hbdbusd`, located in the `sbin/` directory in the root of your building tree.
+   This is the daemon program of HBDBus system.
+1. `hbdbuscl`, located in the `bin/` directory in the root of your building tree.
+   This is a simple command line program for interacting with other programs
+   connecting to HBDBus.
+1. `hbdtest.hvml`, located in the `hvml/` directory in the root of your building tree.
+   This is a simple HVML program for demonstrating use of HVML to interacting
+   with other programs connecting to HBDBus.
+
+To start HBDBus, you need to run `hbdbusd` first. Type the following command
+in the root of your buidling tree:
+
+```console
+$ sbin/hbdbusd
+```
+
+After starting `hbdbusd`, you can run `hbdbuscl` or the HVML script `hbdtest.hvml`
+to play with HBDBus.
+
+For the detailed usage, please run `hbdbusd` or `hbdbuscl` with `-h` option.
+
 ## TODO List
 
 - Version 2.2
