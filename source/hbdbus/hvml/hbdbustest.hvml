@@ -1,0 +1,129 @@
+#!/usr/bin/env purc
+#purc -a cn.fmsoft.hybridos.databus -r test
+
+<!DOCTYPE hvml>
+<hvml target="void">
+    <head>
+        $STREAM.stdout.writelines("# Test native/stream:hbdbus")
+    </head>
+
+    <body>
+        <define as 'onHBDBusReady'>
+            <init as 'hbdbusBuiltin' with 'edpt://localhost/cn.fmsoft.hybridos.databus/builtin' />
+
+            <test with $databus.call($hbdbusBuiltin, 'listEndpoints') >
+                <observe on $databus for 'result:listEndpoints'>
+
+                <inherit>
+                    $STREAM.stdout.writelines("Got result from $hbdbusBuiltin/method/listEndpoints")
+                    $STREAM.stdout.writelines($DATA.serialize($DATA.parse($?.retValue), 'pretty'))
+                </inherit>
+
+                </observe>
+
+                <differ>
+                    $STREAM.stdout.writelines("Failed to call $hbdbusBuiltin/method/listEndpoints")
+                </differ>
+            </test>
+
+            <test with $databus.call($hbdbusBuiltin, 'echo', 'From HVML') >
+                <observe on $databus for 'result:echo'>
+
+                    <inherit>
+                        $STREAM.stdout.writelines("Got result from $hbdbusBuiltin/method/echo")
+                        $STREAM.stdout.writelines($?.retValue)
+                    </inherit>
+
+                </observe>
+
+                <differ>
+                    $STREAM.stdout.writelines("Failed to call $hbdbusBuiltin/method/listEndpoints")
+                </differ>
+            </test>
+
+            <init as 'hbdbusCmdline' with 'edpt://localhost/cn.fmsoft.hybridos.databus/cmdline' />
+            <test with $databus.subscribe($hbdbusBuiltin, 'NewEndpoint') >
+                <observe on $databus for 'event:NewEndpoint'>
+
+                    <inherit>
+                        $STREAM.stdout.writelines("Got event from $hbdbusBuiltin/bubble/NewEndpoint")
+                        $STREAM.stdout.writelines($?.bubbleData)
+                    </inherit>
+
+                    <init as 'bubbleData' with $DATA.parse($?.bubbleData) temp />
+
+                    <test with $L.streq('caseless', $DATA.parse($?.bubbleData).endpointName, $hbdbusCmdline) >
+                        $STREAM.stdout.writelines("HBDBus command line is online now")
+
+                        <test with $databus.subscribe($hbdbusCmdline, 'clock') silently >
+                            <observe on $databus for 'event:clock'>
+
+                                <inherit>
+                                    $STREAM.stdout.writelines("Got event from $hbdbusBuiltin/bubble/clock")
+                                    $STREAM.stdout.writelines($?.bubbleData)
+                                </inherit>
+
+                            </observe>
+                        </test>
+                    </test>
+
+                </observe>
+
+                <differ>
+                    $STREAM.stdout.writelines("Failed to subscribe $hbdbusBuiltin/bubble/NewEndpoint")
+                </differ>
+            </test>
+
+            <test with $databus.register_proc('terminate') >
+                <observe on $databus for 'call:terminate'>
+
+                    <inherit>
+                        $STREAM.stdout.writelines("Got call from $?.fromEndpoint")
+                    </inherit>
+
+                    <test with $databus.send_result($?.resultId, 'Ok') >
+                        <exit with "Terminated by $2?.fromEndpoint">
+                            $databus.revoke_proc('terminate')
+                        </exit>
+                    </test>
+
+                </observe>
+
+                <differ>
+                    $STREAM.stdout.writelines("Failed to register `terminate` method")
+                </differ>
+            </test>
+
+        </define>
+
+        <init as 'databus' with $STREAM.open('unix:///var/tmp/hbdbus.sock', 'default', 'hbdbus') >
+            <observe on $databus for 'state:ready' >
+
+                <inherit>
+                    $STREAM.stdout.writelines("Connection to HBDBus is now ready.")
+                </inherit>
+
+                <call on $onHBDBusReady />
+
+            </observe>
+
+            <observe on $databus for 'error:*' >
+
+                <inherit>
+                    $STREAM.stdout.writelines("Error when using HBDBus.")
+                    <exit with 'error' />
+                </inherit>
+            </observe>
+
+            <catch for `ANY`>
+                <inherit>
+                    $STREAM.stdout.writelines("Failed to connected to HBDBus")
+                </inherit>
+
+                <exit with 'failed' />
+            </catch>
+        </init>
+
+    </body>
+</hvml>
+

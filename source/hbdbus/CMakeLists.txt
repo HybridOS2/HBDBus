@@ -159,3 +159,12 @@ HBDBUS_FRAMEWORK(hbdbuscl)
 
 install(TARGETS hbdbuscl DESTINATION "${EXEC_INSTALL_DIR}/")
 
+set(HVML_FILES
+    "hvml/hbdbustest.hvml"
+)
+
+HBDBUS_COPY_FILES(SampleHVMLFiles
+    DESTINATION "${CMAKE_BINARY_DIR}"
+    FILES ${HVML_FILES}
+)
+
