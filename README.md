@@ -93,6 +93,10 @@ to play with HBDBus.
 
 For the detailed usage, please run `hbdbusd` or `hbdbuscl` with `-h` option.
 
+For the description of APIs providing by HBDBus, please refer to:
+
+[Design of HybridOS Data Bus (Chinese)](https://github.com/HybridOS2/Documents/blob/master/zh/hybridos-design-data-bus-zh.md)
+
 ## TODO List
 
 - Version 2.2
