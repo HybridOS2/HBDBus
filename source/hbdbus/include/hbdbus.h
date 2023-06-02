@@ -70,7 +70,7 @@
 #define HBDBUS_BUBBLE_BROKENENDPOINT        "BrokenEndpoint"
 #define HBDBUS_BUBBLE_LOSTEVENTGENERATOR    "LostEventGenerator"
 #define HBDBUS_BUBBLE_LOSTEVENTBUBBLE       "LostEventBubble"
-#define HBDBUS_BUBBLE_SYSTEMSHUTTINGDOWN    "SystemShuttingdown"
+#define HBDBUS_BUBBLE_SYSTEMSHUTTINGDOWN    "SystemShuttingDown"
 
 #define HBDBUS_NOT_AVAILABLE             "<N/A>"
 
