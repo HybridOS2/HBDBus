@@ -215,9 +215,11 @@ us_handle_accept (USServer* server)
         goto failed;
     }
 
+#if 0
     if (set_nonblocking (newfd)) {
         goto cleanup;
     }
+#endif
 
     usc->ct = CT_UNIX_SOCKET;
     usc->fd = newfd;
@@ -591,7 +593,7 @@ int us_handle_reads (USServer* server, USClient* usc)
         case US_OPCODE_END:
             if (usc->header.sz_payload == 0) {
                 err_code = HBDBUS_EC_PROTOCOL;
-                sta_code = PCRDR_SC_PACKET_TOO_LARGE;
+                sta_code = PCRDR_SC_EXPECTATION_FAILED;
                 break;
             }
 
@@ -744,6 +746,11 @@ int us_send_packet (USServer* server, USClient* usc,
         default:
             HLOG_WARN ("Unknown UnixSocket op code: %d\n", op);
             return -1;
+    }
+
+    if (sz > HBDBUS_MAX_INMEM_PAYLOAD_SIZE) {
+        HLOG_ERR("Sending a too large packet, size: %u\n", sz);
+        return -1;
     }
 
     if (sz > HBDBUS_MAX_FRAME_PAYLOAD_SIZE) {

@@ -346,9 +346,8 @@ static int send_auth_info (hbdbus_conn *conn, const char* ch_code)
         goto failed;
     }
 
-    if (hbdbus_send_text_packet (conn, buff, n)) {
+    if ((err_code = hbdbus_send_text_packet (conn, buff, n))) {
         HLOG_ERR ("Failed to send text packet to HBDBus server in send_auth_info.\n");
-        err_code = HBDBUS_EC_IO;
         goto failed;
     }
 
@@ -944,6 +943,7 @@ int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *pa
             int is_text;
 
             if (header.fragmented > HBDBUS_MAX_INMEM_PAYLOAD_SIZE) {
+                HLOG_ERR ("Too large packet: %u\n", header.fragmented);
                 err_code = HBDBUS_EC_TOO_LARGE;
                 goto done;
             }
@@ -1050,7 +1050,11 @@ int hbdbus_send_text_packet (hbdbus_conn* conn, const char* text, unsigned int l
     if (conn->type == CT_UNIX_SOCKET) {
         USFrameHeader header;
 
-        if (len > HBDBUS_MAX_FRAME_PAYLOAD_SIZE) {
+        if (len > HBDBUS_MAX_INMEM_PAYLOAD_SIZE) {
+            HLOG_ERR("Sending a too large packet, size: %u\n", len);
+            retv = HBDBUS_EC_TOO_LARGE;
+        }
+        else if (len > HBDBUS_MAX_FRAME_PAYLOAD_SIZE) {
             unsigned int left = len;
 
             do {
@@ -1168,8 +1172,9 @@ int hbdbus_call_procedure_and_wait (hbdbus_conn* conn, const char* endpoint,
         return HBDBUS_EC_TOO_SMALL_BUFF;
     }
 
-    if (hbdbus_send_text_packet (conn, buff, n)) {
-        return HBDBUS_EC_IO;
+    int err_code;
+    if ((err_code = hbdbus_send_text_packet (conn, buff, n))) {
+        return err_code;
     }
 
     return wait_for_specific_call_result_packet (conn,
@@ -1522,7 +1527,7 @@ int hbdbus_call_procedure (hbdbus_conn* conn,
         int time_expected, hbdbus_result_handler result_handler,
         const char** call_id)
 {
-    int n, retv;
+    int n;
     char call_id_buf [HBDBUS_LEN_UNIQUE_ID + 1];
     char buff [HBDBUS_DEF_PACKET_BUFF_SIZE];
     char* escaped_param;
@@ -1562,7 +1567,8 @@ int hbdbus_call_procedure (hbdbus_conn* conn,
         return HBDBUS_EC_TOO_SMALL_BUFF;
     }
 
-    if ((retv = hbdbus_send_text_packet (conn, buff, n)) == 0) {
+    int err_code;
+    if ((err_code = hbdbus_send_text_packet (conn, buff, n)) == 0) {
         const char* p;
         p = kvlist_set_ex (&conn->call_list, call_id_buf, &result_handler);
         if (p) {
@@ -1571,10 +1577,10 @@ int hbdbus_call_procedure (hbdbus_conn* conn,
             }
         }
         else
-            retv = HBDBUS_EC_NOMEM;
+            err_code = HBDBUS_EC_NOMEM;
     }
 
-    return retv;
+    return err_code;
 }
 
 int hbdbus_fire_event (hbdbus_conn* conn,
@@ -1789,7 +1795,7 @@ done:
         err_code = HBDBUS_EC_TOO_SMALL_BUFF;
     }
     else
-        hbdbus_send_text_packet(conn, packet_buff, n);
+        err_code = hbdbus_send_text_packet(conn, packet_buff, n);
 
     if (packet_buff && packet_buff != buff_in_stack) {
         free(packet_buff);
@@ -2122,14 +2128,13 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
     }
 
     retval = hbdbus_json_packet_to_object (packet, data_len, &jo);
-    free (packet);
 
     if (retval < 0) {
         HLOG_ERR ("Failed to parse JSON packet; quit...\n");
         err_code = HBDBUS_EC_BAD_PACKET;
     }
     else if (retval == JPT_ERROR) {
-        HLOG_ERR ("The server gives an error packet\n");
+        HLOG_ERR ("The server gives an error packet: %s\n", packet);
         if (conn->error_handler) {
             conn->error_handler (conn, jo);
         }
@@ -2167,6 +2172,7 @@ int hbdbus_read_and_dispatch_packet (hbdbus_conn* conn)
         err_code = HBDBUS_EC_PROTOCOL;
     }
 
+    free (packet);
 done:
     if (jo)
         purc_variant_unref(jo);
