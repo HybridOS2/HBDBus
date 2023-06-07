@@ -24,7 +24,6 @@
 #endif
 
 #include <wtf/Platform.h>
-#include <wtf/Assertions.h>
 #include <wtf/ExportMacros.h>
 
 #if !defined(HBDBUS_EXPORT)

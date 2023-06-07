@@ -210,14 +210,24 @@ bool match_pattern (pattern_list *pl, const char* string,
 
             case PT_SPEC:
                 assert (pattern->spec);
+#if GLIB_CHECK_VERSION(2, 70, 0)
                 if (g_pattern_spec_match_string (pattern->spec, string))
                     goto success;
+#else
+                if (g_pattern_match_string (pattern->spec, string))
+                    goto success;
+#endif
                 break;
 
             case PT_NOT_SPEC:
                 assert (pattern->not_spec);
+#if GLIB_CHECK_VERSION(2, 70, 0)
                 if (g_pattern_spec_match_string (pattern->not_spec, string))
                     goto failed;
+#else
+                if (g_pattern_match_string (pattern->not_spec, string))
+                    goto success;
+#endif
                 break;
 
             case PT_VARIABLE:
