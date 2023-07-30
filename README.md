@@ -64,8 +64,8 @@ HBDBus depends on the following libraries:
 To build HBDBus for your own usage on a generic Linux box without
 the app management of HybridOS, use the following options for `cmake`:
 
-```
-$ cmake <directory_to_source_code>
+```console
+$ cmake <directory_to_source_code> -DPORT=Linux
 ```
 
 ## Usage
