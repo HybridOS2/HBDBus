@@ -1111,6 +1111,7 @@ read_socket (WSServer * server, WSClient * client, char *buffer, int size)
   else
     return read_plain_socket (client, buffer, size);
 #else
+  (void)server;
   return read_plain_socket (client, buffer, size);
 #endif
 }
@@ -1130,6 +1131,7 @@ send_buffer (WSServer * server, WSClient * client, const char *buffer, int len)
   else
     return send_plain_buffer (client, buffer, len);
 #else
+  (void)server;
   return send_plain_buffer (client, buffer, len);
 #endif
 }

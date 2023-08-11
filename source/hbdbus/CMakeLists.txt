@@ -114,8 +114,13 @@ list(APPEND hbdbusd_SOURCES
 set(hbdbusd_LIBRARIES
     PurC::PurC
     "${GLIB_LIBRARIES}"
-    "${OPENSSL_LIBRARIES}"
 )
+
+if (HAVE_OPENSSL)
+    list(APPEND hbdbusd_LIBRARIES
+        "${OPENSSL_LIBRARIES}"
+    )
+endif ()
 
 set_target_properties(hbdbusd PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/sbin"
