@@ -893,12 +893,6 @@ done:
     return err_code;
 }
 
-static inline void my_log (const char* str)
-{
-    ssize_t n = write (2, str, strlen (str));
-    n = n & n;
-}
-
 int hbdbus_read_packet_alloc (hbdbus_conn* conn, char **packet, unsigned int *packet_len)
 {
     char *packet_buf = NULL;
