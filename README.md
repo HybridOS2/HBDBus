@@ -42,7 +42,7 @@ HBDBus includes the following three components:
 
 For more information, please refer to:
 
-<https://github.com/FMSoftCN/hybridos/blob/master/docs/design/hybridos-data-bus-zh.md>
+<https://github.com/HybridOS2/Documents/blob/master/designs/hybridos-design-data-bus-zh.md>
 
 ## Dependencies
 
